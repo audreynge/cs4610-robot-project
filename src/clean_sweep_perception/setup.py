@@ -14,7 +14,7 @@ setup(
         (f"share/{package_name}/config", glob("config/*.yaml")),
         (f"share/{package_name}/launch", glob("launch/*.launch.py")),
     ],
-    install_requires=["setuptools", "pyyaml"],
+    install_requires=["setuptools", "pyyaml", "numpy"],
     zip_safe=True,
     maintainer="Clean Sweep Team",
     maintainer_email="noreply@example.com",

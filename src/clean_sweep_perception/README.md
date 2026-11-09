@@ -31,5 +31,5 @@ where the objects are placed in the sim.
 The core logic has no ROS dependency, so it can be tested on any machine:
 
 ```bash
-uv run --with pytest --with pyyaml env PYTHONPATH=src/clean_sweep_perception pytest src/clean_sweep_perception/test
+uv run --with pytest --with pyyaml --with numpy env PYTHONPATH=src/clean_sweep_perception pytest src/clean_sweep_perception/test
 ```
