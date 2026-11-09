@@ -74,6 +74,27 @@ These depend on the robot and are set as parameters. They're tested in software,
 | `pan_zero_heading` (registry) | `0.0` | `refine` should center the object in the image |
 | `scan_pans`, `scan_tilt` (registry) | `[-2.4 … 0.8]`, `-0.75` | The sweep should cover the floor around the robot |
 
+## Validating on the robot
+
+1. **Speed.** On the NUC, check the exported models are fast enough (target: about 2+ frames/s):
+   ```bash
+   ros2 run clean_sweep_perception benchmark_perception \
+       --detector detector_int8_openvino_model --classifier classifier_int8_openvino_model
+   ```
+2. **Record a bag** of the head camera to tune offline without tying up the robot:
+   ```bash
+   ros2 bag record /camera/color/image_raw /camera/aligned_depth_to_color/image_raw \
+       /camera/color/camera_info /tf /tf_static /joint_states
+   # later: ros2 bag play <bag> --clock, and launch perception with use_sim_time:=true
+   ```
+3. **Score detection against ground truth** (the ≥85% target). Place litter, tape-measure each
+   item's position in the `map` frame, write them in the sim stub's YAML format, run `litter/scan`, then:
+   ```bash
+   ros2 run clean_sweep_perception evaluate_perception --ros-args -p truth_file:=truth.yaml
+   ```
+   This prints recall (items found), precision (false positives), mean position error and label accuracy.
+   Include some non-litter items (shoes, bags, cables) in the scene to check for false positives.
+
 ## Tests (no ROS needed)
 
 The core logic (geometry, pipeline, registry, head angles) has no ROS dependency:

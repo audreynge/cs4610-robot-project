@@ -21,6 +21,7 @@ class YoloDetector:
         from ultralytics import YOLO  # heavy import, only when a model is used
 
         self._model = YOLO(model_path, task="detect")
+        _require_task(self._model, "detect", model_path)
         self._confidence = confidence
         self._imgsz = imgsz
         self._class_ids = None
@@ -45,6 +46,7 @@ class YoloClassifier:
         from ultralytics import YOLO
 
         self._model = YOLO(model_path, task="classify")
+        _require_task(self._model, "classify", model_path)
         self._imgsz = imgsz
 
     def classify(self, crops_bgr: list[np.ndarray]) -> list[tuple[str, float]]:
@@ -52,3 +54,8 @@ class YoloClassifier:
             return []
         results = self._model.predict(crops_bgr, imgsz=self._imgsz, verbose=False)
         return [(r.names[r.probs.top1], float(r.probs.top1conf)) for r in results]
+
+
+def _require_task(model, task: str, path: str) -> None:
+    if model.task != task:
+        raise ValueError(f"{path} is a {model.task!r} model, expected a {task!r} model")

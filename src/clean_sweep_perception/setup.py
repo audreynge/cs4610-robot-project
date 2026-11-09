@@ -27,6 +27,8 @@ setup(
             "litter_detector = clean_sweep_perception.litter_detector_node:main",
             "fake_head_camera = clean_sweep_perception.fake_head_camera_node:main",
             "litter_registry = clean_sweep_perception.litter_registry_node:main",
+            "evaluate_perception = clean_sweep_perception.evaluate_node:main",
+            "benchmark_perception = clean_sweep_perception.benchmark:main",
         ],
     },
 )
