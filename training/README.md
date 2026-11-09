@@ -74,6 +74,11 @@ uv run yolo cfg=configs/classifier.yaml project=$PWD/runs
 uv run yolo val model=runs/detector/weights/best.pt   data=data/detector/data.yaml split=test
 uv run yolo val model=runs/classifier/weights/best.pt data=data/classifier split=test
 
+# Precision/recall at the robot's threshold, false alarms on clean images, and a
+# zero-shot YOLOE baseline for comparison (it uses the same metric)
+uv run evaluate-detector --model runs/detector/weights/best.pt --conf 0.35
+uv run evaluate-detector --model yoloe-26s-seg.pt --prompts "plastic bottle" "drink can" "paper cup" "crumpled paper" "trash"
+
 # Export INT8 OpenVINO models for the Stretch NUC's CPU
 uv run yolo export model=runs/detector/weights/best.pt   format=openvino int8=True data=data/detector/data.yaml
 uv run yolo export model=runs/classifier/weights/best.pt format=openvino int8=True data=data/classifier

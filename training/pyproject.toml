@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Dataset download and build tools for the Clean Sweep litter detector and classifier."
 requires-python = ">=3.10"
 dependencies = [
+    "numpy>=1.23",
     "pillow>=10",
     "pyyaml>=6",
 ]
@@ -20,6 +21,7 @@ download-coco-negatives = "clean_sweep_data.download_coco_negatives:main"
 download-trashnet = "clean_sweep_data.download_trashnet:main"
 build-detector-dataset = "clean_sweep_data.build_detector:main"
 build-classifier-dataset = "clean_sweep_data.build_classifier:main"
+evaluate-detector = "clean_sweep_data.evaluate_detector:main"
 
 [dependency-groups]
 dev = ["pytest>=8"]
