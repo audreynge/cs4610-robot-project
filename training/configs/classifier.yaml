@@ -1,0 +1,12 @@
+# Ultralytics settings for the crop classifier (bottle / can / cup / paper / other).
+#   uv run yolo cfg=configs/classifier.yaml project=$PWD/runs   # -> runs/<name>/weights/best.pt
+# Any key can be overridden on the command line, e.g. `epochs=5 device=mps`.
+task: classify
+mode: train
+model: yolo26n-cls.pt
+data: data/classifier
+epochs: 60
+patience: 15
+imgsz: 224
+batch: 64
+name: classifier
