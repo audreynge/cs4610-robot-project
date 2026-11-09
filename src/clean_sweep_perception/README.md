@@ -20,6 +20,9 @@ head camera ──> litter_detector ──litter/detections──> litter_regist
 | `litter/refine` | `RefineLitter` | After driving up to an object: points the head at it and re-estimates it from close-range detections only. Grasp using the returned position. |
 | `litter/verify_pickup` | `VerifyPickup` | After a grasp (arm out of view): looks where the object was. If it's gone, marks it `PICKED` and returns `picked_up: true`. |
 
+Each object also has a `bin` (`recycling` or `landfill`) for sorting, set from
+[`config/bins.yaml`](config/bins.yaml). Items with low label confidence go to landfill, so a misread never contaminates recycling.
+
 States: `SEEN` (detected, not yet trusted) → `CONFIRMED` (seen 3+ times) → `TARGETED` → `PICKED` or `FAILED`.
 Only act on `CONFIRMED` objects. `width` is the gripper aperture to open to (add a margin).
 

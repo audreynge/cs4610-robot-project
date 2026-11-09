@@ -11,6 +11,7 @@ uint32 id                     # stable across updates of the same physical objec
 string label                  # bottle | can | cup | paper | other
 float32 label_confidence      # classifier confidence, 0..1
 float32 detection_confidence  # detector confidence, 0..1
+string bin                    # where it goes: recycling | landfill (see perception config/bins.yaml)
 
 # Object center on the floor. header.frame_id is normally "map" so the
 # position stays valid while the robot moves; transform with tf2 as needed.

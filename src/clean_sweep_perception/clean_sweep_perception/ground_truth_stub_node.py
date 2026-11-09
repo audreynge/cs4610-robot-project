@@ -9,11 +9,15 @@ Topics / services:
     litter/detect   (clean_sweep_interfaces/DetectLitter)
 """
 
+import os
+
 import rclpy
+from ament_index_python.packages import get_package_share_directory
 from clean_sweep_interfaces.msg import LitterObject, LitterObjectArray
 from clean_sweep_interfaces.srv import DetectLitter
 from rclpy.node import Node
 
+from clean_sweep_perception.sorting import BinRules
 from clean_sweep_perception.stub_scene import StubScene, load_stub_scene
 
 
@@ -22,10 +26,13 @@ class GroundTruthStubNode(Node):
         super().__init__("ground_truth_stub")
         objects_file = self.declare_parameter("objects_file", "").value
         publish_rate = self.declare_parameter("publish_rate", 2.0).value
+        bins_file = self.declare_parameter("bins_file", "").value
 
         if not objects_file:
             raise RuntimeError("parameter 'objects_file' is required")
         self._scene: StubScene = load_stub_scene(objects_file)
+        self._bins = BinRules.from_yaml(bins_file or os.path.join(
+            get_package_share_directory("clean_sweep_perception"), "config", "bins.yaml"))
         self.get_logger().info(
             f"Loaded {len(self._scene.objects)} objects from {objects_file}"
         )
@@ -43,6 +50,7 @@ class GroundTruthStubNode(Node):
             msg.label = obj.label
             msg.label_confidence = 1.0
             msg.detection_confidence = 1.0
+            msg.bin = self._bins.bin_for(obj.label, 1.0)
             msg.position.header.frame_id = self._scene.frame_id
             msg.position.header.stamp = stamp
             msg.position.point.x, msg.position.point.y, msg.position.point.z = obj.position

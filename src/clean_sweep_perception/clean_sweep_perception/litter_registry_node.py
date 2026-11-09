@@ -15,6 +15,7 @@ Services:
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 from collections import deque
@@ -22,6 +23,7 @@ from collections import deque
 import numpy as np
 import rclpy
 import tf2_ros
+from ament_index_python.packages import get_package_share_directory
 from clean_sweep_interfaces.msg import LitterObject, LitterObjectArray
 from clean_sweep_interfaces.srv import (
     DetectLitter, RefineLitter, ScanForLitter, SetLitterState, VerifyPickup,
@@ -39,6 +41,7 @@ from clean_sweep_perception.registry import (
     LitterRegistry, Observation, RegistryParams, State, TrackedObject,
 )
 from clean_sweep_perception.ros_conversions import transform_from_tf
+from clean_sweep_perception.sorting import BinRules
 
 STATE_COLORS = {  # RGBA per state for RViz
     State.SEEN: (0.6, 0.6, 0.6, 0.6), State.CONFIRMED: (0.1, 0.8, 0.1, 0.9),
@@ -65,12 +68,15 @@ class LitterRegistryNode(Node):
             "refine_radius": 0.25,  # m; close-range detections this near the object count
             "verify_radius": 0.12,  # m; any detection this near means it's still there
             "publish_rate": 2.0,
+            "bins_file": "",  # default: this package's config/bins.yaml
         }.items()}
         self._p = p
         self._registry = LitterRegistry(RegistryParams(
             match_radius=p["match_radius"], confirm_sightings=p["confirm_sightings"],
             forget_after=p["forget_after"],
         ))
+        self._bins = BinRules.from_yaml(p["bins_file"] or os.path.join(
+            get_package_share_directory("clean_sweep_perception"), "config", "bins.yaml"))
         self._lock = threading.Lock()
         self._recent: deque[tuple[float, Observation]] = deque(maxlen=500)  # (receive time, obs)
 
@@ -126,6 +132,7 @@ class LitterRegistryNode(Node):
         msg.label = obj.label
         msg.label_confidence = float(obj.label_confidence)
         msg.detection_confidence = float(obj.detection_confidence)
+        msg.bin = self._bins.bin_for(obj.label, obj.label_confidence)
         msg.position.header.frame_id = self._p["frame"]
         msg.position.header.stamp = stamp
         msg.position.point.x, msg.position.point.y, msg.position.point.z = map(float, obj.position)
