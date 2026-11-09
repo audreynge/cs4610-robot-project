@@ -62,7 +62,15 @@ def test_label_is_decided_by_accumulated_confidence():
     registry.update([obs(1.0, 0.0, label="can", label_confidence=0.8)], now=2)
     [obj] = registry.objects()
     assert obj.label == "can"
-    assert obj.label_confidence == pytest.approx(1.7 / 2.2)
+    assert obj.label_confidence == pytest.approx(0.85 * 2 / 3)  # mean confidence x vote share
+
+
+def test_consistently_unsure_label_keeps_low_confidence():
+    """Regression: three unsure 'bottle' votes must not look certain (or sorting trusts them)."""
+    registry = LitterRegistry()
+    for t in range(3):
+        registry.update([obs(1.0, 0.0, label="bottle", label_confidence=0.3)], now=t)
+    assert registry.objects()[0].label_confidence == pytest.approx(0.3)
 
 
 def test_unknown_label_defaults_to_other():
@@ -83,12 +91,37 @@ def test_set_state_unknown_id():
     assert not LitterRegistry().set_state(42, State.TARGETED)
 
 
-def test_replace_estimate_discards_old_far_away_estimate():
+def test_refine_discards_old_far_away_estimate():
     registry = LitterRegistry()
     registry.update([obs(1.0, 0.0, width=0.2)], now=0)
     close_up = [obs(1.08, 0.02, width=0.07), obs(1.1, 0.0, width=0.07)]
-    assert registry.replace_estimate(1, close_up, now=5)
+    assert registry.refine(1, close_up, radius=0.25, since=5, now=6) == 2
     obj = registry.get(1)
     np.testing.assert_allclose(obj.position[:2], [1.09, 0.01])
     assert obj.width == pytest.approx(0.07)
-    assert not registry.replace_estimate(1, [], now=6)
+    assert registry.refine(1, [], radius=0.25, since=5, now=6) == 0
+    assert registry.refine(99, close_up, radius=0.25, since=5, now=6) == 0
+
+
+def test_refine_absorbs_duplicate_created_during_the_close_look():
+    """Regression: far estimate 0.2 m off -> close detections spawn a new object meanwhile."""
+    registry = LitterRegistry(RegistryParams(match_radius=0.15, confirm_sightings=3))
+    for t in range(3):
+        registry.update([obs(1.0, 0.0)], now=t)  # far-away estimate
+    close_up = []
+    for t in range(10, 13):  # during the refine dwell, the real object is at 1.2
+        registry.update([obs(1.2, 0.0)], now=t)
+        close_up.append(obs(1.2, 0.0))
+    assert len(registry.objects()) == 2  # the duplicate exists before refine
+    assert registry.refine(1, close_up, radius=0.25, since=10, now=13) == 3
+    [obj] = registry.objects()
+    assert obj.id == 1 and obj.position[0] == pytest.approx(1.2)
+
+
+def test_refine_ignores_detections_of_a_neighbouring_object():
+    registry = LitterRegistry(RegistryParams(confirm_sightings=1))
+    registry.update([obs(1.0, 0.0), obs(1.0, 0.2)], now=0)  # two items 20 cm apart
+    seen = [obs(1.02, 0.0), obs(1.0, 0.19)]  # close look sees both
+    assert registry.refine(1, seen, radius=0.25, since=5, now=6) == 1
+    np.testing.assert_allclose(registry.get(1).position[:2], [1.02, 0.0])
+    assert registry.get(2) is not None

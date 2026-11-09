@@ -19,6 +19,7 @@ import os
 import threading
 import time
 from collections import deque
+from dataclasses import dataclass
 
 import numpy as np
 import rclpy
@@ -42,6 +43,15 @@ from clean_sweep_perception.registry import (
 )
 from clean_sweep_perception.ros_conversions import transform_from_tf
 from clean_sweep_perception.sorting import BinRules
+
+@dataclass(frozen=True)
+class Look:
+    """Result of pointing the head at an object."""
+
+    position: np.ndarray  # where the object was believed to be
+    started: float  # monotonic time the head started moving
+    observations: list[Observation]  # every detection received after the head settled
+
 
 STATE_COLORS = {  # RGBA per state for RViz
     State.SEEN: (0.6, 0.6, 0.6, 0.6), State.CONFIRMED: (0.1, 0.8, 0.1, 0.9),
@@ -67,6 +77,7 @@ class LitterRegistryNode(Node):
             "forget_after": 10.0,
             "refine_radius": 0.25,  # m; close-range detections this near the object count
             "verify_radius": 0.12,  # m; any detection this near means it's still there
+            "min_frames": 2,  # detector frames needed during a look before trusting "not seen"
             "publish_rate": 2.0,
             "bins_file": "",  # default: this package's config/bins.yaml
         }.items()}
@@ -79,9 +90,11 @@ class LitterRegistryNode(Node):
             get_package_share_directory("clean_sweep_perception"), "config", "bins.yaml"))
         self._lock = threading.Lock()
         self._recent: deque[tuple[float, Observation]] = deque(maxlen=500)  # (receive time, obs)
+        self._frame_times: deque[float] = deque(maxlen=200)  # receive time of every detections message
+        self._head_lock = threading.Lock()  # one head-moving request at a time
 
         self._tf_buffer = tf2_ros.Buffer()
-        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self)
+        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self, spin_thread=True)
 
         detections_group = MutuallyExclusiveCallbackGroup()
         services_group = ReentrantCallbackGroup()
@@ -118,11 +131,16 @@ class LitterRegistryNode(Node):
         with self._lock:
             self._registry.update(observations, now)
             self._recent.extend((now, o) for o in observations)
+            self._frame_times.append(now)
 
-    def _observations_since(self, since: float, near: np.ndarray, radius: float) -> list[Observation]:
+    def _observations_since(self, since: float) -> list[Observation]:
         with self._lock:
-            return [o for t, o in self._recent
-                    if t >= since and np.linalg.norm(o.position[:2] - near[:2]) <= radius]
+            return [o for t, o in self._recent if t >= since]
+
+    def _frames_since(self, since: float) -> int:
+        """Detector messages (including empty ones) received since `since`."""
+        with self._lock:
+            return sum(t >= since for t in self._frame_times)
 
     # --- outputs --------------------------------------------------------------------------
 
@@ -192,19 +210,27 @@ class LitterRegistryNode(Node):
         return response
 
     def _on_scan(self, _request, response):
-        for pan in self._p["scan_pans"]:
-            if not self._head.move(pan, self._p["scan_tilt"]):
-                response.success, response.message = False, f"head move to pan {pan:.2f} failed"
-                break
-            time.sleep(self._p["dwell"])
-        else:
-            response.success = True
+        if not self._head_lock.acquire(blocking=False):
+            response.success, response.message = False, "head is busy with another request"
+            return response
+        try:
+            started = time.monotonic()
+            for pan in self._p["scan_pans"]:
+                if not self._head.move(pan, self._p["scan_tilt"]):
+                    response.success, response.message = False, f"head move to pan {pan:.2f} failed"
+                    break
+                time.sleep(self._p["dwell"])
+            else:
+                response.success = self._frames_since(started) >= self._p["min_frames"]
+                if not response.success:
+                    response.message = "no detector frames arrived during the scan; is litter_detector running?"
+        finally:
+            self._head_lock.release()
         response.objects = self._object_msgs({State.CONFIRMED})
         return response
 
-    def _look_at_object(self, object_id: int) -> tuple[list[Observation] | None, str]:
-        """Point the head at a tracked object, wait `dwell`, and return the detections near it
-        from that wait (None plus an error message on failure)."""
+    def _look_at_object(self, object_id: int) -> tuple[Look | None, str]:
+        """Point the head at a tracked object and wait `dwell` (None plus an error on failure)."""
         with self._lock:
             obj = self._registry.get(object_id)
             position = None if obj is None else obj.position.copy()
@@ -217,45 +243,57 @@ class LitterRegistryNode(Node):
             return None, f"TF not available: {e}"
         target = to_base.points(position[None, :])[0]
         pan, tilt = look_at_angles(target, head.translation, self._p["pan_zero_heading"])
-        if not self._head.move(pan, tilt):
-            return None, "head move failed"
-        settled = time.monotonic()
-        time.sleep(self._p["dwell"])
-        radius = max(self._p["refine_radius"], self._p["verify_radius"])
-        return self._observations_since(settled, position, radius), ""
+
+        if not self._head_lock.acquire(blocking=False):
+            return None, "head is busy with another request"
+        try:
+            started = time.monotonic()
+            if not self._head.move(pan, tilt):
+                return None, "head move failed"
+            settled = time.monotonic()
+            time.sleep(self._p["dwell"])
+        finally:
+            self._head_lock.release()
+
+        frames = self._frames_since(settled)
+        if frames < self._p["min_frames"]:
+            return None, (f"only {frames} detector frames arrived while looking "
+                          f"(need {self._p['min_frames']}); is litter_detector running?")
+        return Look(position, started, self._observations_since(settled)), ""
 
     def _on_refine(self, request, response):
-        seen, error = self._look_at_object(request.id)
-        if seen is None:
+        look, error = self._look_at_object(request.id)
+        if look is None:
             response.success, response.message = False, error
             return response
         with self._lock:
+            used = self._registry.refine(request.id, look.observations, self._p["refine_radius"],
+                                         since=look.started, now=time.monotonic())
             obj = self._registry.get(request.id)
-            close = [o for o in seen
-                     if np.linalg.norm(o.position[:2] - obj.position[:2]) <= self._p["refine_radius"]]
-            response.success = self._registry.replace_estimate(request.id, close, time.monotonic())
+            if obj is None:
+                response.success, response.message = False, f"object {request.id} was forgotten"
+                return response
             response.object = self._to_msg(obj, self.get_clock().now().to_msg())
-        response.message = (f"re-estimated from {len(close)} close-range detections" if response.success
+        response.success = used > 0
+        response.message = (f"re-estimated from {used} close-range detections" if used
                             else "not seen up close; it may have been a false positive")
         return response
 
     def _on_verify_pickup(self, request, response):
-        with self._lock:
-            obj = self._registry.get(request.id)
-            position = None if obj is None else obj.position.copy()
-        seen, error = self._look_at_object(request.id)
-        if seen is None:
+        look, error = self._look_at_object(request.id)
+        if look is None:
             response.picked_up, response.message = False, error
             return response
-        still_there = [o for o in seen
-                       if np.linalg.norm(o.position[:2] - position[:2]) <= self._p["verify_radius"]]
-        response.picked_up = not still_there
-        if response.picked_up:
-            with self._lock:
-                self._registry.set_state(request.id, State.PICKED)
-            response.message = "gone from the floor; marked PICKED"
-        else:
-            response.message = f"still seen in {len(still_there)} detections"
+        still_there = [o for o in look.observations
+                       if np.linalg.norm(o.position[:2] - look.position[:2]) <= self._p["verify_radius"]]
+        if still_there:
+            response.picked_up, response.message = False, f"still seen in {len(still_there)} detections"
+            return response
+        with self._lock:
+            marked = self._registry.set_state(request.id, State.PICKED)
+        response.picked_up = marked
+        response.message = ("gone from the floor; marked PICKED" if marked
+                            else f"object {request.id} was forgotten")
         return response
 
     def _lookup(self, target: str, source: str):
@@ -266,7 +304,7 @@ class LitterRegistryNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = LitterRegistryNode()
-    executor = MultiThreadedExecutor(num_threads=4)
+    executor = MultiThreadedExecutor(num_threads=8)  # services block while the head moves
     executor.add_node(node)
     try:
         executor.spin()

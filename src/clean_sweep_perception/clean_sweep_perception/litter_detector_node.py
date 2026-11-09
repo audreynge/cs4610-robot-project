@@ -49,7 +49,9 @@ class LitterDetectorNode(Node):
         self._last_run = 0.0
 
         self._tf_buffer = tf2_ros.Buffer()
-        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self)
+        # Own thread: this node's executor is busy running the models, and the TF buffer
+        # must keep filling meanwhile for lookups at the image timestamp to succeed.
+        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self, spin_thread=True)
 
         self._detections_pub = self.create_publisher(LitterObjectArray, "litter/detections", 10)
         self._debug_pub = self.create_publisher(Image, "litter/debug_image", 1)

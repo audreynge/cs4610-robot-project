@@ -45,9 +45,11 @@ class TrackedObject:
     detection_confidence: float
     state: State
     sightings: int
+    first_seen: float
     last_seen: float
     weight: float  # total observation weight behind the current estimate (capped)
-    label_votes: Counter = field(default_factory=Counter)
+    label_votes: Counter = field(default_factory=Counter)  # label -> summed classifier confidence
+    label_counts: Counter = field(default_factory=Counter)  # label -> number of votes
 
     @property
     def label(self) -> str:
@@ -55,8 +57,17 @@ class TrackedObject:
 
     @property
     def label_confidence(self) -> float:
-        total = sum(self.label_votes.values())
-        return self.label_votes[self.label] / total if total else 0.0
+        """Mean classifier confidence of the winning label, scaled by its share of the votes.
+
+        Consistent confident votes give a high value; consistent *unsure* votes stay
+        low (so sorting can fall back to landfill), and so do split votes.
+        """
+        if not self.label_votes:
+            return 0.0
+        label = self.label
+        mean_confidence = self.label_votes[label] / self.label_counts[label]
+        share = self.label_counts[label] / sum(self.label_counts.values())
+        return mean_confidence * share
 
 
 @dataclass(frozen=True)
@@ -115,16 +126,38 @@ class LitterRegistry:
         obj.state = state
         return True
 
-    def replace_estimate(self, object_id: int, observations: list[Observation], now: float) -> bool:
-        """Restart an object's estimate from these (e.g. close-range) observations only."""
+    def refine(self, object_id: int, observations: list[Observation], radius: float,
+               since: float, now: float) -> int:
+        """Re-estimate an object from close-range observations made since `since`.
+
+        Uses observations within `radius` that aren't closer to another object that
+        already existed, restarts the estimate from them, and absorbs objects created
+        since `since` around the new position (the far estimate was off, so the close
+        detections spawned duplicates meanwhile). Returns how many observations were used.
+        """
         obj = self._objects.get(object_id)
-        if obj is None or not observations:
-            return False
+        if obj is None:
+            return 0
+        neighbours = [o for o in self._objects.values()
+                      if o.id != object_id and o.state != State.PICKED and o.first_seen < since]
+
+        def distance(o: TrackedObject, obs: Observation) -> float:
+            return float(np.linalg.norm(o.position[:2] - obs.position[:2]))
+
+        used = [obs for obs in observations
+                if distance(obj, obs) <= radius
+                and all(distance(n, obs) > distance(obj, obs) for n in neighbours)]
+        if not used:
+            return 0
         obj.weight = 0.0
         obj.depth_valid = False
-        for obs in observations:
+        for obs in used:
             self._merge(obj, obs, now)
-        return True
+        for other in list(self._objects.values()):
+            if (other.id != object_id and other.first_seen >= since and other.state != State.PICKED
+                    and np.linalg.norm(other.position[:2] - obj.position[:2]) <= self._params.match_radius):
+                del self._objects[other.id]
+        return len(used)
 
     def _weight(self, obs: Observation) -> float:
         return self._params.depth_weight if obs.depth_valid else self._params.floor_plane_weight
@@ -134,10 +167,11 @@ class LitterRegistry:
             id=self._next_id, position=obs.position.astype(float).copy(), width=obs.width,
             height=obs.height, depth_valid=obs.depth_valid,
             detection_confidence=obs.detection_confidence, state=State.SEEN, sightings=1,
-            last_seen=now, weight=self._weight(obs),
+            first_seen=now, last_seen=now, weight=self._weight(obs),
         )
         if obs.label:
             obj.label_votes[obs.label] += obs.label_confidence
+            obj.label_counts[obs.label] += 1
         self._objects[obj.id] = obj
         self._next_id += 1
         self._maybe_confirm(obj)
@@ -154,6 +188,7 @@ class LitterRegistry:
         obj.detection_confidence = max(obj.detection_confidence, obs.detection_confidence)
         if obs.label:
             obj.label_votes[obs.label] += obs.label_confidence
+            obj.label_counts[obs.label] += 1
         obj.sightings += 1
         obj.last_seen = now
         self._maybe_confirm(obj)

@@ -34,8 +34,10 @@ class YoloDetector:
                 raise ValueError(f"model {model_path} has no classes {sorted(missing)}")
 
     def detect(self, image_bgr: np.ndarray) -> list[tuple[Box, float]]:
+        # agnostic_nms: one object seen as two classes (e.g. bottle and cup) must stay one box,
+        # since every class means "litter" here.
         result = self._model.predict(image_bgr, conf=self._confidence, imgsz=self._imgsz,
-                                     classes=self._class_ids, verbose=False)[0]
+                                     classes=self._class_ids, agnostic_nms=True, verbose=False)[0]
         boxes = result.boxes
         return [(Box(*map(float, xyxy)), float(conf))
                 for xyxy, conf in zip(boxes.xyxy.tolist(), boxes.conf.tolist())]

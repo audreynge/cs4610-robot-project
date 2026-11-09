@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 
+from action_msgs.msg import GoalStatus
 from builtin_interfaces.msg import Duration as DurationMsg
 from control_msgs.action import FollowJointTrajectory
 from rclpy.action import ActionClient
@@ -41,8 +42,16 @@ class HeadController:
             self._node.get_logger().error(f"head move to pan={pan:.2f} tilt={tilt:.2f} was rejected")
             return False
         result = self._wait(goal_handle.get_result_async(), timeout)
-        if result is None or result.result.error_code != FollowJointTrajectory.Result.SUCCESSFUL:
-            self._node.get_logger().error(f"head move to pan={pan:.2f} tilt={tilt:.2f} failed")
+        if result is None:
+            goal_handle.cancel_goal_async()
+            self._node.get_logger().error(f"head move to pan={pan:.2f} tilt={tilt:.2f} timed out")
+            return False
+        # error_code defaults to SUCCESSFUL, so an aborted/cancelled goal must be caught by status.
+        if (result.status != GoalStatus.STATUS_SUCCEEDED
+                or result.result.error_code != FollowJointTrajectory.Result.SUCCESSFUL):
+            self._node.get_logger().error(
+                f"head move to pan={pan:.2f} tilt={tilt:.2f} failed (status {result.status}, "
+                f"error {result.result.error_code})")
             return False
         return True
 
