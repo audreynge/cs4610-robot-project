@@ -16,3 +16,4 @@ training/runs/
 
 # Downloaded pretrained weights
 training/*.pt
+training/*.log

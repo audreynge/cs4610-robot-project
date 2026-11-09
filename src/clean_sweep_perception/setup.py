@@ -24,6 +24,8 @@ setup(
     entry_points={
         "console_scripts": [
             "ground_truth_stub = clean_sweep_perception.ground_truth_stub_node:main",
+            "litter_detector = clean_sweep_perception.litter_detector_node:main",
+            "fake_head_camera = clean_sweep_perception.fake_head_camera_node:main",
         ],
     },
 )

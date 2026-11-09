@@ -4,54 +4,9 @@ import numpy as np
 import pytest
 
 from clean_sweep_perception.checks import SIZE_LIMITS, rejection_reason
-from clean_sweep_perception.geometry import Box, CameraModel, Localization, Transform, localize
+from clean_sweep_perception.geometry import Box, Localization, Transform, localize
 from clean_sweep_perception.labels import LITTER_LABELS
-
-WIDTH, HEIGHT = 640, 480
-CAMERA = CameraModel(fx=600.0, fy=600.0, cx=320.0, cy=240.0)
-
-
-def head_camera(height=1.2, pitch_deg=45.0) -> Transform:
-    """Camera above the base origin, looking along +x and pitched down."""
-    s, c = np.sin(np.radians(pitch_deg)), np.cos(np.radians(pitch_deg))
-    z_axis = np.array([c, 0.0, -s])  # optical axis
-    x_axis = np.array([0.0, -1.0, 0.0])  # image right = robot's right
-    y_axis = np.cross(z_axis, x_axis)  # image down
-    return Transform(np.column_stack([x_axis, y_axis, z_axis]), np.array([0.0, 0.0, height]))
-
-
-def render_depth(camera_to_base: Transform, cuboids) -> np.ndarray:
-    """Depth (optical z) of the nearest surface per pixel: floor plus axis-aligned cuboids."""
-    v, u = np.mgrid[0:HEIGHT, 0:WIDTH]
-    directions = camera_to_base.directions(CAMERA.rays(u.ravel(), v.ravel()))
-    origin = camera_to_base.translation
-
-    with np.errstate(divide="ignore", invalid="ignore"):
-        t_best = np.where(directions[:, 2] < 0, -origin[2] / directions[:, 2], np.inf)
-        for low, high in cuboids:  # slab-method ray/box intersection
-            t1 = (np.asarray(low) - origin) / directions
-            t2 = (np.asarray(high) - origin) / directions
-            t_near = np.nanmax(np.minimum(t1, t2), axis=1)
-            t_far = np.nanmin(np.maximum(t1, t2), axis=1)
-            hit = (t_near <= t_far) & (t_near > 0)
-            t_best = np.where(hit & (t_near < t_best), t_near, t_best)
-    # Rays scaled to optical z == 1, so the ray parameter is the depth.
-    return np.where(np.isfinite(t_best), t_best, 0.0).reshape(HEIGHT, WIDTH)
-
-
-def project_box(camera_to_base: Transform, low, high) -> Box:
-    """Tight image box around a cuboid's corners."""
-    corners = np.array([[x, y, z] for x in (low[0], high[0]) for y in (low[1], high[1])
-                        for z in (low[2], high[2])])
-    in_camera = (corners - camera_to_base.translation) @ camera_to_base.rotation
-    u = CAMERA.fx * in_camera[:, 0] / in_camera[:, 2] + CAMERA.cx
-    v = CAMERA.fy * in_camera[:, 1] / in_camera[:, 2] + CAMERA.cy
-    return Box(u.min(), v.min(), u.max(), v.max())
-
-
-def can_at(x, y, base_z=0.0, size=0.066, height=0.12):
-    half = size / 2
-    return (x - half, y - half, base_z), (x + half, y + half, base_z + height)
+from synthetic_scene import CAMERA, HEIGHT, WIDTH, can_at, head_camera, project_box, render_depth
 
 
 def test_depth_estimate_finds_center_and_size():
