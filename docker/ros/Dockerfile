@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3-pip lib
     && PIP_BREAK_SYSTEM_PACKAGES=1 pip3 install --no-cache-dir -r /tmp/requirements.txt \
     # torch pulls in a new setuptools that needs a newer `packaging` than Ubuntu ships;
     # without this, colcon's Python package builds fail.
-    && PIP_BREAK_SYSTEM_PACKAGES=1 pip3 install --no-cache-dir "packaging>=24.2"
+    && PIP_BREAK_SYSTEM_PACKAGES=1 pip3 install --no-cache-dir --ignore-installed "packaging>=24.2"
 
 COPY src/ src/
 RUN . "/opt/ros/$ROS_DISTRO/setup.sh" && colcon build
