@@ -1,0 +1,7 @@
+# Point the head at one object and re-estimate it from fresh (close-range)
+# detections only. Call after driving up to the object, before grasping.
+uint32 id
+---
+bool success
+string message
+LitterObject object

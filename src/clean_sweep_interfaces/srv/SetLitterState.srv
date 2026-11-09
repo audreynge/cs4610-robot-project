@@ -1,0 +1,6 @@
+# Update an object's lifecycle state (e.g. TARGETED when going for it, FAILED after giving up).
+uint32 id
+uint8 state  # one of LitterObject.STATE_*
+---
+bool success
+string message

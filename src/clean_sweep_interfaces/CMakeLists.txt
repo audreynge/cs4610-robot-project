@@ -10,6 +10,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/LitterObject.msg"
   "msg/LitterObjectArray.msg"
   "srv/DetectLitter.srv"
+  "srv/SetLitterState.srv"
+  "srv/ScanForLitter.srv"
+  "srv/RefineLitter.srv"
+  "srv/VerifyPickup.srv"
   DEPENDENCIES geometry_msgs std_msgs
 )
 
