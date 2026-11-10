@@ -1,5 +1,7 @@
 # Clean Sweep
 
+[![Tests](https://github.com/audreynge/cs4610-robot-project/actions/workflows/test.yml/badge.svg)](https://github.com/audreynge/cs4610-robot-project/actions/workflows/test.yml)
+
 Autonomous litter pickup with the Hello Robot Stretch.
 
 **Team:** Paarth, Weiyi, Audrey, Amy
@@ -34,7 +36,7 @@ You only need [uv](https://docs.astral.sh/uv/getting-started/installation/), not
 
 ```bash
 ./run.sh --perception   # live litter detection on your laptop's webcam (press q to quit)
-./run.sh --test         # run every test suite
+./run.sh --test         # run every test suite (GitHub also runs this on every push)
 ./run.sh --all          # tests, then the webcam demo
 ```
 

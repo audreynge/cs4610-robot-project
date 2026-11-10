@@ -1,0 +1,18 @@
+# Runs every test suite (./run.sh --test) on each push and pull request.
+# No ROS, GPU or robot needed; it takes a minute or two.
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - run: ./run.sh --test
