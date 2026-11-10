@@ -105,4 +105,4 @@ Classifier top-1 accuracy is 0.75, and 0.74 for INT8. Per-class recall is bottle
 cup 0.44, paper 0.59, other 0.89. Most mistakes put a recyclable in `other`, which sorts to
 landfill, so sorting errs toward landfill and doesn't contaminate recycling. 89% of predictions
 have confidence at least 0.6 (`bins.yaml` `min_confidence`), and those are 79% correct.
-Cups need more data; Drinking Waste and Indoor Waste should help.
+Cups need more data; no current source has many. Indoor Waste adds paper, and Drinking Waste adds cans and bottles.
