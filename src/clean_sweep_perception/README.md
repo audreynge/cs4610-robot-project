@@ -56,6 +56,36 @@ flat-floor depth, camera info, TF), so the whole stack runs on a laptop:
 ros2 run clean_sweep_perception fake_head_camera --ros-args -p image:=/path/to/photo.jpg
 ```
 
+### On your laptop's webcam
+
+`webcam_demo` runs the trained detector and classifier live on a webcam, with no ROS and no Docker.
+Docker on a Mac can't see the camera, so this runs on macOS directly. Each detection is boxed
+with its label and bin: blue means recycling, grey means landfill. Labels with confidence below
+0.6 go to landfill, as on the robot.
+
+From the repo root (first run downloads PyTorch and Ultralytics into uv's cache):
+
+```bash
+uv run --with ultralytics --with pyyaml env PYTHONPATH=src/clean_sweep_perception \
+    python -m clean_sweep_perception.webcam_demo \
+    --detector training/runs/kaggle_v3/runs/detector_all/weights/best.pt \
+    --classifier training/runs/kaggle/runs/classifier/weights/best.pt
+```
+
+- Use the `.pt` files on a Mac (about 60 ms/frame on an M1). The INT8 OpenVINO exports are for
+  the robot's Intel NUC; on Apple Silicon they take several seconds per frame.
+- The first time, macOS asks to let your terminal (or VS Code) use the camera. If it never asked or
+  you said no, turn it on in System Settings → Privacy & Security → Camera and restart the terminal.
+- If the wrong camera opens (for example an iPhone through Continuity Camera), add `--camera 1`.
+- `--confidence` sets the detector threshold (default 0.35, the robot's value). Press `q` to quit.
+
+To test it, hold the webcam about 1 m above the floor and tilt it down, like Stretch's head camera,
+then put a bottle, can, cup and crumpled paper in view. Most training photos are of litter on the
+ground, so items held up in front of the camera are detected less reliably.
+
+This checks only what the models recognize. Depth, the floor-position estimate, size checks and
+tracking need the robot's depth camera; use `fake_head_camera` or the robot for those.
+
 ### In simulation: ground-truth stub
 
 `ground_truth_stub` publishes `litter/objects` and serves `litter/detect` from a YAML list of objects.
@@ -107,5 +137,5 @@ These depend on the robot and are set as parameters. They're tested in software,
 The core logic (geometry, pipeline, registry, head angles) has no ROS dependency:
 
 ```bash
-uv run --with pytest --with pyyaml --with numpy env PYTHONPATH=src/clean_sweep_perception pytest src/clean_sweep_perception/test
+uv run --with pytest --with pyyaml --with numpy --with opencv-python-headless env PYTHONPATH=src/clean_sweep_perception pytest src/clean_sweep_perception/test
 ```

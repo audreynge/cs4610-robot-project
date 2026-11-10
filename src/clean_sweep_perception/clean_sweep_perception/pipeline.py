@@ -55,11 +55,8 @@ class LitterPerception:
     def process(self, color_bgr: np.ndarray, depth_m: np.ndarray, camera: CameraModel,
                 camera_to_base: Transform) -> FrameResult:
         upright = rotate_upright(color_bgr, self._rotation)
-        raw_detections = self._detector.detect(upright)
-        labels = self._classify(upright, [box for box, _ in raw_detections])
-
         accepted, rejected = [], []
-        for (box, confidence), (label, label_confidence) in zip(raw_detections, labels):
+        for box, confidence, label, label_confidence in self.detect_and_label(upright):
             detection = Detection(box, box_to_raw(box, self._rotation, color_bgr.shape),
                                   confidence, label, label_confidence)
             localization = localize(detection.raw_box, depth_m, camera, camera_to_base,
@@ -71,6 +68,13 @@ class LitterPerception:
             else:
                 accepted.append((detection, localization))
         return FrameResult(accepted, rejected, upright)
+
+    def detect_and_label(self, upright_bgr: np.ndarray) -> list[tuple[Box, float, str | None, float]]:
+        """The 2D half of `process`: (box, detection confidence, label, label confidence) per detection."""
+        detections = self._detector.detect(upright_bgr)
+        labels = self._classify(upright_bgr, [box for box, _ in detections])
+        return [(box, confidence, label, label_confidence)
+                for (box, confidence), (label, label_confidence) in zip(detections, labels)]
 
     def _classify(self, image: np.ndarray, boxes: list[Box]) -> list[tuple[str | None, float]]:
         if self._classifier is None or not boxes:
