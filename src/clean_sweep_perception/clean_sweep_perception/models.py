@@ -12,9 +12,11 @@ import numpy as np
 
 from clean_sweep_perception.geometry import Box
 
+DEFAULT_CONFIDENCE = 0.35  # the robot's detection threshold; the evaluation numbers use it too
+
 
 class YoloDetector:
-    def __init__(self, model_path: str, confidence: float = 0.35, imgsz: int = 640,
+    def __init__(self, model_path: str, confidence: float = DEFAULT_CONFIDENCE, imgsz: int = 640,
                  class_names: Iterable[str] | None = None):
         """`class_names` keeps only those classes; use it to run a stock COCO model
         (e.g. ["bottle", "cup"]) before the litter detector is trained."""
