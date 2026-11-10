@@ -28,6 +28,24 @@ Development starts in simulation (a single object at a known location) and incre
 
 ## Getting Started
 
+### Quick start
+
+You only need [uv](https://docs.astral.sh/uv/getting-started/installation/), not ROS. From the repo root:
+
+```bash
+./run.sh --perception   # live litter detection on your laptop's webcam (press q to quit)
+./run.sh --test         # run every test suite
+./run.sh --all          # tests, then the webcam demo
+```
+
+- **Wrong camera:** add `--camera 1`.
+- **Camera permission:** on macOS, allow camera access for your terminal in System Settings → Privacy & Security → Camera.
+- **Models:** the trained models aren't in git. `--perception` expects them under `training/runs/` (ask Audrey), or point to your own with `DETECTOR=path/to/detector.pt CLASSIFIER=path/to/classifier.pt ./run.sh --perception`.
+
+To add your subsystem (e.g. `--navigation`), see the comment at the top of [`run.sh`](run.sh).
+
+### Packages
+
 ROS 2 packages live in `src/` (build with `colcon build` from the repo root).
 
 - [`src/clean_sweep_interfaces`](src/clean_sweep_interfaces): shared messages (`LitterObject`, `LitterObjectArray`, `DetectLitter`)
