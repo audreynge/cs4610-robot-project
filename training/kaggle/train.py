@@ -41,6 +41,34 @@ def check_environment() -> None:
         sys.exit(f"No internet access. {hint}")
 
 
+# One detector per entry: (name, sources to train on, sources whose val images pick best.pt).
+# None means every source. Validation leaves out indoor_waste: its low-angle images are easy,
+# so they dominate the score that picks best.pt, while TACO is closer to Stretch's view.
+DETECTOR_RUNS = [
+    ("detector_all", None, ["taco", "coco_negatives"]),
+    ("detector_no_indoor", ["taco", "coco_negatives"], ["taco", "coco_negatives"]),
+]
+TRAIN_CLASSIFIER = False  # the current classifier is already trained on all sources
+
+
+def image_list(detector_data: Path, split: str, sources: list[str] | None) -> list[str]:
+    """Images of one split, limited to the given sources (file names start with '<source>__')."""
+    images = sorted((detector_data / "images" / split).iterdir())
+    return [str(p) for p in images if sources is None or p.name.split("__", 1)[0] in sources]
+
+
+def write_data_yaml(name: str, detector_data: Path, train_sources, val_sources) -> Path:
+    """Ultralytics data file whose train/val are image lists (the input mount is read-only)."""
+    out = Path("/kaggle/working") / name
+    out.mkdir(parents=True, exist_ok=True)
+    for split, sources in (("train", train_sources), ("val", val_sources)):
+        (out / f"{split}.txt").write_text("\n".join(image_list(detector_data, split, sources)) + "\n")
+    data_yaml = out / "data.yaml"
+    data_yaml.write_text(f"path: {detector_data}\ntrain: {out / 'train.txt'}\nval: {out / 'val.txt'}\n"
+                         "test: images/test\nnames:\n  0: litter\n")
+    return data_yaml
+
+
 def main() -> None:
     check_environment()
     run(sys.executable, "-m", "pip", "install", "-q", "ultralytics==8.4.208", "openvino", "nncf")
@@ -49,28 +77,24 @@ def main() -> None:
     classifier_data = next(p for p in sorted(INPUT.rglob("classifier")) if (p / "train").is_dir())
     configs = find("detector.yaml").parent
     code = find("clean_sweep_data", is_dir=True).parent
-
-    # The input mount is read-only and the uploaded data.yaml has a placeholder path.
-    data_yaml = Path("/kaggle/working/detector_data.yaml")
-    lines = (detector_data / "data.yaml").read_text().splitlines()
-    data_yaml.write_text("\n".join([f"path: {detector_data}", *lines[1:]]) + "\n")
-
     common = [f"project={RUNS}", "device=0", "workers=4", "exist_ok=True"]
-    run("yolo", f"cfg={configs / 'detector.yaml'}", f"data={data_yaml}", *common)
-    run("yolo", f"cfg={configs / 'classifier.yaml'}", f"data={classifier_data}", *common)
 
-    detector = RUNS / "detector" / "weights" / "best.pt"
-    classifier = RUNS / "classifier" / "weights" / "best.pt"
-    run("yolo", "val", f"model={detector}", f"data={data_yaml}", "split=test", *common[:2],
-        "name=detector_test")
-    run("yolo", "val", f"model={classifier}", f"data={classifier_data}", "split=test", *common[:2],
-        "name=classifier_test")
-    run(sys.executable, "-m", "clean_sweep_data.evaluate_detector", "--model", detector,
-        "--data", detector_data, "--device", "0",
-        env={**os.environ, "PYTHONPATH": str(code)})
+    for name, train_sources, val_sources in DETECTOR_RUNS:
+        data_yaml = write_data_yaml(name, detector_data, train_sources, val_sources)
+        run("yolo", f"cfg={configs / 'detector.yaml'}", f"data={data_yaml}", f"name={name}", *common)
+        detector = RUNS / name / "weights" / "best.pt"
+        run(sys.executable, "-m", "clean_sweep_data.evaluate_detector", "--model", detector,
+            "--data", detector_data, "--device", "0",
+            env={**os.environ, "PYTHONPATH": str(code)})
+        run("yolo", "export", f"model={detector}", "format=openvino", "int8=True", f"data={data_yaml}")
 
-    run("yolo", "export", f"model={detector}", "format=openvino", "int8=True", f"data={data_yaml}")
-    run("yolo", "export", f"model={classifier}", "format=openvino", "int8=True", f"data={classifier_data}")
+    if TRAIN_CLASSIFIER:
+        run("yolo", f"cfg={configs / 'classifier.yaml'}", f"data={classifier_data}", *common)
+        classifier = RUNS / "classifier" / "weights" / "best.pt"
+        run("yolo", "val", f"model={classifier}", f"data={classifier_data}", "split=test", *common[:2],
+            "name=classifier_test")
+        run("yolo", "export", f"model={classifier}", "format=openvino", "int8=True",
+            f"data={classifier_data}")
 
 
 if __name__ == "__main__":
