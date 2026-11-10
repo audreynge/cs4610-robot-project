@@ -120,19 +120,28 @@ uv run --with kaggle --with six kaggle kernels output <user>/clean-sweep-train -
 To retrain after changing the data, rebuild `data/kaggle` and run
 `kaggle datasets version -p data/kaggle --dir-mode zip -m "..."` instead of `create`.
 
-## Baseline results (12 epochs on an M1 Mac, TACO + COCO negatives)
+## Results
 
-A short run to check the pipeline end to end. The full GPU run should do better.
-Test split: 601 images and 1073 boxes for the detector, 925 crops for the classifier.
+Test split: TACO (526 images), Indoor Waste (406, low vacuum-robot camera angle), and COCO clean
+indoor images (75). TACO is the closest to Stretch's view. Detector scores are at conf 0.35.
 
-| Detector at conf 0.35 | AP50 | precision | recall | false alarms, COCO clean images |
-|---|---|---|---|---|
-| Trained (`best.pt`) | 0.525 | 0.79 | 0.35 | 0/75 |
-| Trained, INT8 OpenVINO | 0.527 | 0.76 | 0.40 | 0/75 |
-| Zero-shot YOLOE-26s with prompts | 0.232 | 0.75 | 0.035 | 2/75 |
+| Detector | TACO AP50 | TACO precision | TACO recall | Indoor Waste AP50 | Indoor Waste recall | COCO false alarms |
+|---|---|---|---|---|---|---|
+| **Kaggle, all sources, best.pt picked on TACO/COCO val** (`detector_all`) | 0.507 | 0.70 | 0.43 | 0.98 | 0.96 | 0/75 |
+| Kaggle, without Indoor Waste (`detector_no_indoor`) | 0.469 | 0.69 | 0.41 | 0.18 | 0.12 | 0/75 |
+| Kaggle, all sources, best.pt picked on all val | 0.487 | 0.70 | 0.42 | 0.99 | 0.97 | 0/75 |
+| 12-epoch Mac baseline, TACO + COCO only | 0.525 | 0.79 | 0.35 | 0.19 | 0.07 | 0/75 |
+| Zero-shot YOLOE-26s with prompts | 0.250 | 0.81 | 0.035 | - | - | 2/75 |
 
-Classifier top-1 accuracy is 0.75, and 0.74 for INT8. Per-class recall is bottle 0.59, can 0.61,
-cup 0.44, paper 0.59, other 0.89. Most mistakes put a recyclable in `other`, which sorts to
-landfill, so sorting errs toward landfill and doesn't contaminate recycling. 89% of predictions
-have confidence at least 0.6 (`bins.yaml` `min_confidence`), and those are 79% correct.
-Cups need more data; no current source has many. Indoor Waste adds paper, and Drinking Waste adds cans and bottles.
+Use `detector_all`. It's about as accurate as the baseline on TACO but finds more litter, and
+models trained without Indoor Waste miss most litter on indoor floors. Pick best.pt on TACO/COCO
+validation only (as `kaggle/train.py` does): Indoor Waste is easy, so it otherwise dominates the
+score, and TACO accuracy falls as training goes on. INT8 export kept AP50 within 0.01 of
+PyTorch on the baseline.
+
+**Classifier** (Kaggle, all sources): test top-1 accuracy is 0.77, against 0.64 before
+Indoor Waste on the same crops. Per-class recall on the Mac fine-tune, which scored the same, was
+bottle 0.66, can 0.61, cup 0.38, paper 0.83, other 0.86. Most mistakes put a recyclable in
+`other`, so sorting errs toward landfill. Predictions with confidence of at least 0.6
+(`bins.yaml` `min_confidence`) are 81% correct. Cups are weakest because no source has many;
+Drinking Waste adds cans and bottles.
