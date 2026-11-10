@@ -77,6 +77,23 @@ def test_voc_unmapped_category_raises(tmp_path):
         list(read_source(source))
 
 
+def test_labelme_uses_image_file_name_and_normalizes_corners(tmp_path):
+    make_image(tmp_path / "a.jpg", (64, 48))
+    (tmp_path / "a.json").write_text(json.dumps({
+        "imagePath": "..\\images\\a.jpg", "imageWidth": 64, "imageHeight": 48,
+        "shapes": [
+            {"label": "paper", "points": [[30, 40], [1, 2]], "shape_type": "rectangle"},
+            {"label": "plastic", "points": [[5, 5], [20, 8], [10, 25]], "shape_type": "polygon"},
+            {"label": "cap", "points": [[1, 1], [4, 4]], "shape_type": "rectangle"},
+        ],
+    }))
+    source = make_source(tmp_path, "labelme", {"paper": "paper", "plastic": LITTER, "cap": "ignore"})
+
+    [record] = list(read_source(source))
+    assert record.image_path == tmp_path / "a.jpg"
+    assert record.boxes == (Box(1, 2, 30, 40, "paper"), Box(5, 5, 20, 25, LITTER))
+
+
 def test_negatives_have_no_boxes(tmp_path):
     make_image(tmp_path / "images" / "n.jpg")
     [record] = list(read_source(make_source(tmp_path, "negatives", images="images")))

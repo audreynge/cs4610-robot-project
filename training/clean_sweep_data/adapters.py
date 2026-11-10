@@ -122,6 +122,30 @@ def read_voc(source: SourceConfig) -> Iterator[ImageRecord]:
                           width, height, tuple(boxes))
 
 
+def read_labelme(source: SourceConfig) -> Iterator[ImageRecord]:
+    """LabelMe json, one file per image. Settings: annotations (dir), images (dir, default=annotations).
+
+    Each shape's box is the bounding box of its points, so rectangles and polygons both work.
+    """
+    annotations_dir = source.path("annotations")
+    images_dir = source.path("images", source.settings.get("annotations", "."))
+
+    for json_path in sorted(annotations_dir.rglob("*.json")):
+        data = json.loads(json_path.read_text())
+        # imagePath is relative to wherever the annotator saved it (often a Windows path), so
+        # only its file name is reliable.
+        image_path = images_dir / Path(data["imagePath"].replace("\\", "/")).name
+        width, height = data["imageWidth"], data["imageHeight"]
+        boxes = []
+        for shape in data["shapes"]:
+            xs, ys = zip(*shape["points"])
+            box = _keep(source, shape["label"], (min(xs), min(ys), max(xs), max(ys)), width, height)
+            if box:
+                boxes.append(box)
+        yield ImageRecord(make_key(source.name, images_dir, image_path), image_path,
+                          width, height, tuple(boxes))
+
+
 def read_negatives(source: SourceConfig) -> Iterator[ImageRecord]:
     """Images known to contain no litter. Settings: images (dir)."""
     images_dir = source.path("images")
@@ -151,6 +175,7 @@ _READERS: dict[str, Callable[[SourceConfig], Iterator[ImageRecord]]] = {
     "coco": read_coco,
     "yolo": read_yolo,
     "voc": read_voc,
+    "labelme": read_labelme,
     "negatives": read_negatives,
     "folders": read_folders,
 }

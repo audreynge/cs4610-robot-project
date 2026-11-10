@@ -53,17 +53,17 @@ detector_sources:
 
   # Indoor Waste Image Dataset (Xi'an Jiaotong, 2025): indoor floors, made for
   # sweeping robots. Manual download: https://data.mendeley.com/datasets/dy7smxr93r/1
-  # VERIFY after download: annotation format and exact class names.
+  # CC BY 4.0, credit: Yangke L, Xi'an Jiaotong University, doi:10.17632/dy7smxr93r.1
+  # 4000 images at 1280x720 with a LabelMe .json beside each. Shot from a few cm above the
+  # floor (vacuum-robot view), so the angle differs from Stretch's head camera.
   - name: indoor_waste
-    format: voc
+    format: labelme
     root: data/raw/indoor_waste
-    annotations: Annotations
-    images: JPEGImages
     categories:
-      paper: paper
-      plastic: litter  # bottles, cups and wrappers mixed together
-      cap: ignore
-      shell: ignore
+      paper: paper      # crumpled paper and tissues
+      plastic: litter   # snack wrappers and bags; detector only, "other" has plenty of crops
+      cap: ignore       # bottle caps, too small to grasp
+      shell: ignore     # seed shells
 
   # Drinking Waste Classification (Kaggle, CC0): cans and bottles, YOLO labels.
   # Manual download from Kaggle (needs an API token).

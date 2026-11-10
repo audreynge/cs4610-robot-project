@@ -11,7 +11,7 @@ import yaml
 LITTER = "litter"  # detector-only target: definitely litter, type unknown
 IGNORE = "ignore"  # not a pickup target: the box is dropped
 
-DETECTION_FORMATS = frozenset({"coco", "yolo", "voc", "negatives"})
+DETECTION_FORMATS = frozenset({"coco", "yolo", "voc", "labelme", "negatives"})
 CLASSIFICATION_FORMATS = frozenset({"folders"})
 
 _SOURCE_KEYS = {"name", "format", "root", "categories", "default"}

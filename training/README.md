@@ -25,7 +25,7 @@ uv run pytest          # all tests run offline
 | TACO (official + unofficial, ~5.3k images) | detector + classifier | `uv run download-taco` (640px thumbnails; `--full-res` for originals) |
 | Indoor COCO negatives (no litter-like objects) | detector backgrounds | `uv run download-coco-negatives` |
 | TrashNet | classifier | `uv run download-trashnet` |
-| [Indoor Waste Image Dataset](https://data.mendeley.com/datasets/dy7smxr93r/1) (indoor floors, made for sweeping robots) | detector + classifier (paper) | Manual: download from Mendeley and unzip into `data/raw/indoor_waste/`. **Check the license and then check the `indoor_waste` entry in `datasets.yaml`** (format and class names are unconfirmed). |
+| [Indoor Waste Image Dataset](https://data.mendeley.com/datasets/dy7smxr93r/1) (CC BY 4.0, indoor floors, low vacuum-robot camera angle) | detector (paper, wrappers) + classifier (paper) | Manual, from `training/`: `cd data/raw/indoor_waste` then `curl -L -o annotations.zip https://data.mendeley.com/public-files/datasets/dy7smxr93r/files/48e9801f-ca7a-4a3a-8e2d-fa88e5901734/file_downloaded`, `curl -L -o images.zip https://data.mendeley.com/public-files/datasets/dy7smxr93r/files/aed008e5-86af-4d8d-acc0-d74c6cadfac3/file_downloaded`, and `unzip` both there (images and LabelMe .json files end up side by side). |
 | Drinking Waste Classification (Kaggle, CC0) | detector + classifier (cans, bottles) | Manual: download from Kaggle and unzip into `data/raw/drinking_waste/`. Check the folder name and class order in `datasets.yaml`. |
 
 Downloads resume where they left off, so re-running is safe. A source that hasn't been
