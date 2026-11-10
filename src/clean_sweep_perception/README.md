@@ -36,6 +36,9 @@ ros2 launch clean_sweep_perception perception.launch.py \
     classifier_model:=/path/to/classifier_int8_openvino_model
 ```
 
+Keep the `_openvino_model` ending when copying or renaming an exported model folder: Ultralytics
+picks the OpenVINO backend from that suffix and rejects the folder without it. A `.pt` file also works.
+
 Before the litter models are trained, a stock COCO model finds bottles and cups:
 `detector_model:=yolo26n.pt detector_classes:="['bottle', 'cup']"`.
 
@@ -76,11 +79,15 @@ These depend on the robot and are set as parameters. They're tested in software,
 
 ## Validating on the robot
 
-1. **Speed.** On the NUC, check the exported models are fast enough (target: about 2+ frames/s):
+1. **Speed.** On the NUC, check the models are fast enough (target: about 2+ frames/s). Benchmark
+   both the INT8 export and the `.pt` file, and use whichever is faster:
    ```bash
    ros2 run clean_sweep_perception benchmark_perception \
        --detector detector_int8_openvino_model --classifier classifier_int8_openvino_model
+   ros2 run clean_sweep_perception benchmark_perception --detector detector.pt --classifier classifier.pt
    ```
+   Only measure on the NUC. OpenVINO INT8 is built for Intel CPUs: on an Apple Silicon Mac
+   (Docker is ARM there) it took about 6.7 s/frame, while PyTorch took 0.12 s/frame.
 2. **Record a bag** of the head camera to tune offline without tying up the robot:
    ```bash
    ros2 bag record /camera/color/image_raw /camera/aligned_depth_to_color/image_raw \

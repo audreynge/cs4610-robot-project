@@ -89,3 +89,20 @@ After adding a dataset (Indoor Waste, Drinking Waste), rebuild and retrain with 
 so you can compare runs.
 
 No NVIDIA GPU? On an Apple Silicon Mac add `device=mps batch=16`. It works, just slower.
+
+## Baseline results (12 epochs on an M1 Mac, TACO + COCO negatives)
+
+A short run to check the pipeline end to end. The full GPU run should do better.
+Test split: 601 images and 1073 boxes for the detector, 925 crops for the classifier.
+
+| Detector at conf 0.35 | AP50 | precision | recall | false alarms, COCO clean images |
+|---|---|---|---|---|
+| Trained (`best.pt`) | 0.525 | 0.79 | 0.35 | 0/75 |
+| Trained, INT8 OpenVINO | 0.527 | 0.76 | 0.40 | 0/75 |
+| Zero-shot YOLOE-26s with prompts | 0.232 | 0.75 | 0.035 | 2/75 |
+
+Classifier top-1 accuracy is 0.75, and 0.74 for INT8. Per-class recall is bottle 0.59, can 0.61,
+cup 0.44, paper 0.59, other 0.89. Most mistakes put a recyclable in `other`, which sorts to
+landfill, so sorting errs toward landfill and doesn't contaminate recycling. 89% of predictions
+have confidence at least 0.6 (`bins.yaml` `min_confidence`), and those are 79% correct.
+Cups need more data; Drinking Waste and Indoor Waste should help.
