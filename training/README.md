@@ -133,7 +133,7 @@ indoor images (75). TACO is the closest to Stretch's view. Detector scores are a
 | 12-epoch Mac baseline, TACO + COCO only | 0.525 | 0.79 | 0.35 | 0.19 | 0.07 | 0/75 |
 | Zero-shot YOLOE-26s with prompts | 0.250 | 0.81 | 0.035 | - | - | 2/75 |
 
-Use `detector_all`. It's about as accurate as the baseline on TACO but finds more litter, and
+Use `detector_all`, which is the copy in [`src/clean_sweep_perception/models`](../src/clean_sweep_perception/models/README.md). It's about as accurate as the baseline on TACO but finds more litter, and
 models trained without Indoor Waste miss most litter on indoor floors. Pick best.pt on TACO/COCO
 validation only (as `kaggle/train.py` does): Indoor Waste is easy, so it otherwise dominates the
 score, and TACO accuracy falls as training goes on. INT8 export kept AP50 within 0.01 of

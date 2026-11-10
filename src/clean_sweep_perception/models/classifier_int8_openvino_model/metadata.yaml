@@ -1,0 +1,28 @@
+description: Ultralytics YOLO26n-cls model trained on /kaggle/input/datasets/audrey518/clean-sweep-litter/classifier
+author: Ultralytics
+date: "2026-11-10T06:39:16.303734+00:00"
+version: "8.4.208"
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 1
+task: classify
+head: Classify
+batch: 1
+imgsz:
+- 224
+- 224
+names:
+  0: bottle
+  1: can
+  2: cup
+  3: other
+  4: paper
+args:
+  data: /kaggle/input/datasets/audrey518/clean-sweep-litter/classifier
+  batch: 1
+  fraction: 1.0
+  quantize: 8
+  nms: null
+  dynamic: false
+channels: 3
+end2end: false

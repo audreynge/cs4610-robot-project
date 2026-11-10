@@ -1,12 +1,15 @@
 """Litter detector on the head camera.
 
-    ros2 launch clean_sweep_perception litter_detector.launch.py \
-        detector_model:=/path/to/detector_int8_openvino_model \
-        classifier_model:=/path/to/classifier_int8_openvino_model
+    ros2 launch clean_sweep_perception litter_detector.launch.py
 
-Before the litter models are trained, a stock COCO model works for bottles and cups:
-    detector_model:=yolo26n.pt detector_classes:="['bottle', 'cup']"
+By default it uses the INT8 models bundled in the package (models/), made for the
+robot's Intel CPU. On a Mac (Docker is ARM there), pass the .pt files instead, which are faster:
+    detector_model:=<share>/models/detector.pt classifier_model:=<share>/models/classifier.pt
 """
+
+import os
+
+from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
@@ -14,9 +17,10 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
+MODELS = os.path.join(get_package_share_directory("clean_sweep_perception"), "models")
 ARGUMENTS = {
-    "detector_model": "",
-    "classifier_model": "",
+    "detector_model": os.path.join(MODELS, "detector_int8_openvino_model"),
+    "classifier_model": os.path.join(MODELS, "classifier_int8_openvino_model"),
     "detector_classes": "['']",
     "detector_confidence": "0.35",
     "image_rotation": "cw90",

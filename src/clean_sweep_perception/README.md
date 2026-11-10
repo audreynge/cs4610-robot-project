@@ -31,10 +31,15 @@ A typical loop for the state machine: `scan` → choose the nearest `CONFIRMED` 
 ## Running
 
 ```bash
-ros2 launch clean_sweep_perception perception.launch.py \
-    detector_model:=/path/to/detector_int8_openvino_model \
-    classifier_model:=/path/to/classifier_int8_openvino_model
+ros2 launch clean_sweep_perception perception.launch.py
 ```
+
+The trained models are in [`models/`](models/README.md) and are installed with the package.
+The launch files use the INT8 versions by default, which are built for the robot's Intel CPU.
+To use other models, pass `detector_model:=...` and `classifier_model:=...`.
+On a Mac in Docker, which runs on ARM, the `.pt` files are much faster:
+`detector_model:=/ws/install/clean_sweep_perception/share/clean_sweep_perception/models/detector.pt`
+(and the same for `classifier.pt`).
 
 Keep the `_openvino_model` ending when copying or renaming an exported model folder: Ultralytics
 picks the OpenVINO backend from that suffix and rejects the folder without it. A `.pt` file also works.
@@ -68,8 +73,8 @@ From the repo root (first run downloads PyTorch and Ultralytics into uv's cache)
 ```bash
 uv run --with ultralytics --with pyyaml env PYTHONPATH=src/clean_sweep_perception \
     python -m clean_sweep_perception.webcam_demo \
-    --detector training/runs/kaggle_v3/runs/detector_all/weights/best.pt \
-    --classifier training/runs/kaggle/runs/classifier/weights/best.pt
+    --detector src/clean_sweep_perception/models/detector.pt \
+    --classifier src/clean_sweep_perception/models/classifier.pt
 ```
 
 - Use the `.pt` files on a Mac (about 60 ms/frame on an M1). The INT8 OpenVINO exports are for
@@ -112,9 +117,10 @@ These depend on the robot and are set as parameters. They're tested in software,
 1. **Speed.** On the NUC, check the models are fast enough (target: about 2+ frames/s). Benchmark
    both the INT8 export and the `.pt` file, and use whichever is faster:
    ```bash
+   M=$(ros2 pkg prefix clean_sweep_perception)/share/clean_sweep_perception/models
    ros2 run clean_sweep_perception benchmark_perception \
-       --detector detector_int8_openvino_model --classifier classifier_int8_openvino_model
-   ros2 run clean_sweep_perception benchmark_perception --detector detector.pt --classifier classifier.pt
+       --detector $M/detector_int8_openvino_model --classifier $M/classifier_int8_openvino_model
+   ros2 run clean_sweep_perception benchmark_perception --detector $M/detector.pt --classifier $M/classifier.pt
    ```
    Only measure on the NUC. OpenVINO INT8 is built for Intel CPUs: on an Apple Silicon Mac
    (Docker is ARM there) it took about 6.7 s/frame, while PyTorch took 0.12 s/frame.

@@ -40,7 +40,7 @@ You only need [uv](https://docs.astral.sh/uv/getting-started/installation/), not
 
 - **Wrong camera:** add `--camera 1`.
 - **Camera permission:** on macOS, allow camera access for your terminal in System Settings → Privacy & Security → Camera.
-- **Models:** the trained models aren't in git. `--perception` expects them under `training/runs/` (ask Audrey), or point to your own with `DETECTOR=path/to/detector.pt CLASSIFIER=path/to/classifier.pt ./run.sh --perception`.
+- **Models:** the trained models are in [`src/clean_sweep_perception/models`](src/clean_sweep_perception/models/README.md), so it runs straight after cloning. To try other models: `DETECTOR=path/to/detector.pt CLASSIFIER=path/to/classifier.pt ./run.sh --perception`.
 
 To add your subsystem (e.g. `--navigation`), see the comment at the top of [`run.sh`](run.sh).
 

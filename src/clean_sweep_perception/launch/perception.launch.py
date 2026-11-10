@@ -1,9 +1,8 @@
 """Full perception stack: litter detector + registry (tracking and services).
 
-    ros2 launch clean_sweep_perception perception.launch.py \
-        detector_model:=/path/to/detector_int8_openvino_model \
-        classifier_model:=/path/to/classifier_int8_openvino_model
+    ros2 launch clean_sweep_perception perception.launch.py
 
+The bundled models are used unless detector_model:=... / classifier_model:=... are given.
 Other arguments pass through to litter_detector.launch.py (e.g. detector_classes,
 image_rotation, output_frame).
 """
