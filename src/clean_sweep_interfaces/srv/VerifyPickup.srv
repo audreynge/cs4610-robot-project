@@ -1,0 +1,6 @@
+# Look where an object was. If it's gone, mark it PICKED and return true.
+# Move the arm out of the camera's view first.
+uint32 id
+---
+bool picked_up
+string message

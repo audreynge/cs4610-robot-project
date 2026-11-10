@@ -1,0 +1,14 @@
+{
+  "id": "audrey518/clean-sweep-train",
+  "title": "Clean Sweep Train",
+  "code_file": "train.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "dataset_sources": ["audrey518/clean-sweep-litter", "audrey518/clean-sweep-code"],
+  "competition_sources": [],
+  "kernel_sources": []
+}

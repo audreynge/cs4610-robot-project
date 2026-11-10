@@ -1,0 +1,8 @@
+# Ground-truth litter for simulation. Positions are object centers in `frame_id`
+# (meters); match them to where the objects are placed in the sim scene.
+frame_id: map
+objects:
+  - label: can
+    position: [1.0, 0.5, 0.06]
+    width: 0.066
+    height: 0.12

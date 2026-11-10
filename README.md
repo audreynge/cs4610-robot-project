@@ -10,7 +10,7 @@ Clean Sweep enables Stretch to search a room, detect common litter (cups, plasti
 
 ## Approach
 
-- **Perception (Audrey):** A YOLO model fine-tuned on TACO and TrashNet (plus our own images) detects litter in the head camera feed. RealSense depth data is used to estimate each item's 3D position in the robot's base frame.
+- **Perception (Audrey):** A single-class YOLO "litter" detector, trained on public datasets (TACO, an indoor-floor waste dataset, Drinking Waste and indoor negatives), finds litter in the head camera feed. A crop classifier then labels each item as bottle, can, cup, paper or other. RealSense depth, with a floor-plane fallback for clear or shiny objects, gives each item's 3D position and size.
 - **Manipulation (Paarth):** Stretch rotates so the object is beside it, lowers the lift, extends the arm, and opens the gripper to fit the object's estimated size. Grasps are verified using gripper position and effort, and retried on failure.
 - **Navigation (Oscar):** The room is mapped with SLAM, bin locations are marked, and Nav2 moves the robot between items and bins.
 - **Integration (Amy):** A state machine coordinates the full loop: search → approach → grasp → verify → deliver.
@@ -28,7 +28,30 @@ Development starts in simulation (a single object at a known location) and incre
 
 ## Getting Started
 
-_Setup and run instructions coming soon._
+### Quick start
+
+You only need [uv](https://docs.astral.sh/uv/getting-started/installation/), not ROS. From the repo root:
+
+```bash
+./run.sh --perception   # live litter detection on your laptop's webcam (press q to quit)
+./run.sh --test         # run every test suite
+./run.sh --all          # tests, then the webcam demo
+```
+
+- **Wrong camera:** add `--camera 1`.
+- **Camera permission:** on macOS, allow camera access for your terminal in System Settings → Privacy & Security → Camera.
+- **Models:** the trained models aren't in git. `--perception` expects them under `training/runs/` (ask Audrey), or point to your own with `DETECTOR=path/to/detector.pt CLASSIFIER=path/to/classifier.pt ./run.sh --perception`.
+
+To add your subsystem (e.g. `--navigation`), see the comment at the top of [`run.sh`](run.sh).
+
+### Packages
+
+ROS 2 packages live in `src/` (build with `colcon build` from the repo root).
+
+- [`src/clean_sweep_interfaces`](src/clean_sweep_interfaces): shared messages (`LitterObject`, `LitterObjectArray`, `DetectLitter`)
+- [`src/clean_sweep_perception`](src/clean_sweep_perception/README.md): perception nodes, including a ground-truth stub for simulation
+- [`training`](training/README.md): dataset download and build tools, plus GPU training for the perception models
+- [`docker`](docker/README.md): ROS 2 container (Humble or Jazzy) for building and running the packages
 
 ## Demo
 

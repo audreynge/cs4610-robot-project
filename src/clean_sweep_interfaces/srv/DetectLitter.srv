@@ -1,0 +1,3 @@
+# Return the litter perception currently knows about.
+---
+LitterObject[] objects

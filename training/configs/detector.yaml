@@ -1,0 +1,20 @@
+# Ultralytics settings for the single-class litter detector.
+#   uv run yolo cfg=configs/detector.yaml project=$PWD/runs   # -> runs/<name>/weights/best.pt
+# Any key can be overridden on the command line, e.g. `epochs=5 device=mps batch=16`.
+task: detect
+mode: train
+model: yolo26n.pt  # nano: fast enough for the Stretch NUC CPU (YOLO26 is NMS-free)
+data: data/detector/data.yaml
+epochs: 150
+patience: 30  # stop early if val mAP hasn't improved in this many epochs
+imgsz: 640  # don't go lower: distant litter is only a few pixels wide
+batch: -1  # auto-size to ~60% of GPU memory (CUDA only); set a number on Mac/CPU
+name: detector
+
+# Augmentation to bridge the gap from (mostly outdoor) phone photos to the
+# Stretch head camera looking down at an indoor floor.
+degrees: 10.0
+perspective: 0.0005
+scale: 0.6
+hsv_v: 0.5
+mixup: 0.1

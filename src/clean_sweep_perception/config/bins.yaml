@@ -1,0 +1,11 @@
+# Which bin each litter class goes in (the stretch goal: sorting).
+# Items whose label confidence is below `min_confidence` go to `fallback`
+# instead, so a misclassified item never contaminates recycling.
+fallback: landfill
+min_confidence: 0.6
+bins:
+  bottle: recycling
+  can: recycling
+  paper: recycling
+  cup: landfill      # most disposable cups are plastic-lined
+  other: landfill

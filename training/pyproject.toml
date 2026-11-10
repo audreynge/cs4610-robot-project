@@ -1,0 +1,37 @@
+[project]
+name = "clean-sweep-data"
+version = "0.1.0"
+description = "Dataset download and build tools for the Clean Sweep litter detector and classifier."
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.23",
+    "pillow>=10",
+    "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+# Model training and OpenVINO INT8 export (pulls in PyTorch; on Linux the PyPI
+# wheels include CUDA). openvino/nncf are listed so Ultralytics doesn't pip-install
+# them behind uv's back during export.
+train = ["ultralytics>=8.4,<8.5", "openvino>=2025.0", "nncf>=3.0"]
+
+[project.scripts]
+download-taco = "clean_sweep_data.download_taco:main"
+download-coco-negatives = "clean_sweep_data.download_coco_negatives:main"
+download-trashnet = "clean_sweep_data.download_trashnet:main"
+build-detector-dataset = "clean_sweep_data.build_detector:main"
+build-classifier-dataset = "clean_sweep_data.build_classifier:main"
+evaluate-detector = "clean_sweep_data.evaluate_detector:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["clean_sweep_data"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

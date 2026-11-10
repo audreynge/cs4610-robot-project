@@ -1,0 +1,6 @@
+# Sweep the head across the configured pan angles, pausing at each so the
+# detector can look, then return the confirmed litter.
+---
+bool success
+string message
+LitterObject[] objects

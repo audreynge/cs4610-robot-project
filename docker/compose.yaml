@@ -1,0 +1,18 @@
+# ROS 2 container for the Clean Sweep packages.
+#   docker compose -f docker/compose.yaml build
+#   docker compose -f docker/compose.yaml run --rm ros ros2 launch clean_sweep_perception ground_truth_stub.launch.py
+# Pick the distro to match the robot: ROS_DISTRO=jazzy docker compose -f docker/compose.yaml build
+services:
+  ros:
+    build:
+      context: ..
+      dockerfile: docker/ros/Dockerfile
+      args:
+        ROS_DISTRO: ${ROS_DISTRO:-humble}
+    image: clean-sweep-ros:${ROS_DISTRO:-humble}
+    # Host networking + shared IPC so DDS discovery reaches the robot and
+    # other ROS processes on this machine (works fully on Linux hosts).
+    network_mode: host
+    ipc: host
+    environment:
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}

@@ -1,0 +1,100 @@
+# Dataset build config for the litter detector and crop classifier.
+#
+# Every source maps its own category names onto a target:
+#   - a class in `classes`: box goes to the detector AND is cropped for the classifier
+#   - litter: box goes to the detector only (it's litter, but the type is unknown)
+#   - ignore: box is dropped (not something the robot should pick up)
+# `default` applies to categories not listed. With no default, an unlisted
+# category is an error, so new labels never slip in silently.
+#
+# Paths are relative to this file. Sources whose `root` doesn't exist are skipped
+# with a warning, so you can build with whatever has been downloaded so far.
+
+# Keep in sync with src/clean_sweep_perception/clean_sweep_perception/labels.py
+classes: [bottle, can, cup, paper, other]
+
+split: {val: 0.1, test: 0.1}
+
+detector_sources:
+  # TACO: litter in context, 60 categories. `uv run download-taco`
+  - name: taco
+    format: coco
+    root: data/raw/taco
+    annotations: [annotations.json, annotations_unofficial.json]
+    images: .
+    default: other
+    categories:
+      Clear plastic bottle: bottle
+      Other plastic bottle: bottle
+      Glass bottle: bottle
+      Drink can: can
+      Food Can: can
+      Paper cup: cup
+      Disposable plastic cup: cup
+      Foam cup: cup
+      Glass cup: cup
+      Other plastic cup: cup
+      Normal paper: paper
+      Magazine paper: paper
+      Wrapping paper: paper
+      Tissues: paper
+      Unlabeled litter: litter
+      # Too small or thin for the Stretch gripper, or not litter at all.
+      Cigarette: ignore
+      Pop tab: ignore
+      Plastic bottle cap: ignore
+      Metal bottle cap: ignore
+      Plastic straw: ignore
+      Paper straw: ignore
+      Broken glass: ignore
+      Battery: ignore
+      Food waste: ignore
+      Shoe: ignore
+
+  # Indoor Waste Image Dataset (Xi'an Jiaotong, 2025): indoor floors, made for
+  # sweeping robots. Manual download: https://data.mendeley.com/datasets/dy7smxr93r/1
+  # CC BY 4.0, credit: Yangke L, Xi'an Jiaotong University, doi:10.17632/dy7smxr93r.1
+  # 4000 images at 1280x720 with a LabelMe .json beside each. Shot from a few cm above the
+  # floor (vacuum-robot view), so the angle differs from Stretch's head camera.
+  - name: indoor_waste
+    format: labelme
+    root: data/raw/indoor_waste
+    categories:
+      paper: paper      # crumpled paper and tissues
+      plastic: litter   # snack wrappers and bags; detector only, "other" has plenty of crops
+      cap: ignore       # bottle caps, too small to grasp
+      shell: ignore     # seed shells
+
+  # Drinking Waste Classification (Kaggle, CC0): cans and bottles, YOLO labels.
+  # Manual download from Kaggle (needs an API token).
+  # VERIFY after download: folder name and class order.
+  - name: drinking_waste
+    format: yolo
+    root: data/raw/drinking_waste
+    images: YOLO_imgs
+    class_names: [AluCan, Glass, HDPEM, PET]
+    categories:
+      AluCan: can
+      Glass: bottle
+      HDPEM: bottle
+      PET: bottle
+
+  # Indoor COCO scenes with no litter-like objects. `uv run download-coco-negatives`
+  - name: coco_negatives
+    format: negatives
+    root: data/raw/coco_negatives
+    images: images
+
+classifier_sources:
+  # TrashNet: one object per photo. `uv run download-trashnet`
+  - name: trashnet
+    format: folders
+    root: data/raw/trashnet
+    images: dataset-resized
+    categories:
+      metal: can
+      paper: paper
+      cardboard: other
+      trash: other
+      plastic: ignore  # mixes bottles with tubs and containers
+      glass: ignore    # mixes bottles with jars

@@ -1,0 +1,8 @@
+# Python packages the detector node needs that rosdep can't install.
+# Install CPU-only PyTorch first on the robot (no GPU there), e.g.:
+#   pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+#   pip3 install -r requirements.txt
+ultralytics>=8.4,<8.5
+openvino>=2025.0
+# ROS 2 Humble's Python packages are built against NumPy 1.x.
+numpy<2
