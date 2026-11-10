@@ -19,6 +19,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from clean_sweep_perception.models import DEFAULT_CONFIDENCE, YoloClassifier, YoloDetector
 from clean_sweep_perception.pipeline import LitterPerception
 from clean_sweep_perception.sorting import BinRules
 
@@ -47,12 +48,10 @@ def annotate(frame_bgr: np.ndarray, perception: LitterPerception, rules: BinRule
 
 
 def main() -> None:
-    from clean_sweep_perception.models import YoloClassifier, YoloDetector
-
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--detector", required=True, help=".pt file (OpenVINO INT8 is slow on Apple Silicon)")
     parser.add_argument("--classifier", help="optional; without it boxes say just 'litter'")
-    parser.add_argument("--confidence", type=float, default=0.35, help="the robot's detector_confidence")
+    parser.add_argument("--confidence", type=float, default=DEFAULT_CONFIDENCE, help="the robot's detector_confidence")
     parser.add_argument("--camera", type=int, default=0, help="try 1 if 0 opens an iPhone or the wrong camera")
     parser.add_argument("--bins", type=Path, default=DEFAULT_BINS)
     args = parser.parse_args()

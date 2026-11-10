@@ -72,9 +72,9 @@ class LitterRegistryNode(Node):
             "scan_pans": [-2.4, -1.6, -0.8, 0.0, 0.8],  # rad
             "scan_tilt": -0.75,  # rad, negative looks down
             "dwell": 1.5,  # s to let the detector look after each head move
-            "match_radius": 0.15,
-            "confirm_sightings": 3,
-            "forget_after": 10.0,
+            "match_radius": RegistryParams.match_radius,
+            "confirm_sightings": RegistryParams.confirm_sightings,
+            "forget_after": RegistryParams.forget_after,
             "refine_radius": 0.25,  # m; close-range detections this near the object count
             "verify_radius": 0.12,  # m; any detection this near means it's still there
             "min_frames": 2,  # detector frames needed during a look before trusting "not seen"

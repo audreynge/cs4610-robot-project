@@ -13,8 +13,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-DETECTOR="${DETECTOR:-training/runs/kaggle_v3/runs/detector_all/weights/best.pt}"
-CLASSIFIER="${CLASSIFIER:-training/runs/kaggle/runs/classifier/weights/best.pt}"
+DETECTOR="${DETECTOR:-src/clean_sweep_perception/models/detector.pt}"
+CLASSIFIER="${CLASSIFIER:-src/clean_sweep_perception/models/classifier.pt}"
 
 usage() { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; }
 
@@ -34,8 +34,7 @@ run_perception() {
   for model in "$DETECTOR" "$CLASSIFIER"; do
     if [ ! -e "$model" ]; then
       echo "Model not found: $model" >&2
-      echo "Trained models aren't in git. Copy them here from whoever trained them, train your own" >&2
-      echo "(training/README.md), or point to them with DETECTOR=... CLASSIFIER=... ./run.sh --perception" >&2
+      echo "Set DETECTOR=... CLASSIFIER=... to a .pt file, or restore the bundled ones with git." >&2
       exit 1
     fi
   done

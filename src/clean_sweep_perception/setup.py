@@ -13,6 +13,8 @@ setup(
         (f"share/{package_name}", ["package.xml"]),
         (f"share/{package_name}/config", glob("config/*.yaml")),
         (f"share/{package_name}/launch", glob("launch/*.launch.py")),
+        (f"share/{package_name}/models", glob("models/*.pt")),
+        *[(f"share/{package_name}/{d}", glob(f"{d}/*")) for d in glob("models/*_openvino_model")],
     ],
     install_requires=["setuptools", "pyyaml", "numpy"],
     zip_safe=True,

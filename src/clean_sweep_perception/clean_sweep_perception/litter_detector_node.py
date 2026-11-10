@@ -27,9 +27,25 @@ from sensor_msgs.msg import CameraInfo, Image
 
 from clean_sweep_perception.debug_view import draw_debug
 from clean_sweep_perception.geometry import CameraModel
-from clean_sweep_perception.models import YoloClassifier, YoloDetector
+from clean_sweep_perception.models import DEFAULT_CONFIDENCE, YoloClassifier, YoloDetector
 from clean_sweep_perception.pipeline import LitterPerception
 from clean_sweep_perception.ros_conversions import image_to_numpy, transform_from_tf
+
+# Every parameter and its default. litter_detector.launch.py builds its arguments from this.
+PARAMETER_DEFAULTS = {
+    "color_topic": "/camera/color/image_raw",
+    "depth_topic": "/camera/aligned_depth_to_color/image_raw",
+    "info_topic": "/camera/color/camera_info",
+    "base_frame": "base_link",
+    "output_frame": "map",
+    "detector_model": "",
+    "detector_confidence": DEFAULT_CONFIDENCE,
+    "detector_imgsz": 640,
+    "detector_classes": [""],  # e.g. ["bottle", "cup"] for a stock COCO model
+    "classifier_model": "",
+    "image_rotation": "cw90",  # how to turn the raw head image upright
+    "max_rate": 3.0,  # Hz; the litter doesn't move, so spare the CPU
+}
 
 
 class LitterDetectorNode(Node):
@@ -69,21 +85,7 @@ class LitterDetectorNode(Node):
         )
 
     def _declare_parameters(self) -> dict:
-        defaults = {
-            "color_topic": "/camera/color/image_raw",
-            "depth_topic": "/camera/aligned_depth_to_color/image_raw",
-            "info_topic": "/camera/color/camera_info",
-            "base_frame": "base_link",
-            "output_frame": "map",
-            "detector_model": "",
-            "detector_confidence": 0.35,
-            "detector_imgsz": 640,
-            "detector_classes": [""],  # e.g. ["bottle", "cup"] for a stock COCO model
-            "classifier_model": "",
-            "image_rotation": "cw90",  # how to turn the raw head image upright
-            "max_rate": 3.0,  # Hz; the litter doesn't move, so spare the CPU
-        }
-        return {name: self.declare_parameter(name, value).value for name, value in defaults.items()}
+        return {name: self.declare_parameter(name, value).value for name, value in PARAMETER_DEFAULTS.items()}
 
     def _lookup(self, target: str, source: str, stamp):
         tf = self._tf_buffer.lookup_transform(target, source, stamp, timeout=Duration(seconds=0.2))

@@ -81,7 +81,11 @@ def main() -> None:
 
     for name, train_sources, val_sources in DETECTOR_RUNS:
         data_yaml = write_data_yaml(name, detector_data, train_sources, val_sources)
-        run("yolo", f"cfg={configs / 'detector.yaml'}", f"data={data_yaml}", f"name={name}", *common)
+        # Kaggle gives the data loader only 2 CPU cores, which limit training speed. Caching the
+        # resized images in RAM (about 7 GB of Kaggle's ~30) skips decoding every JPEG each epoch:
+        # 1.4x faster image loading, measured on this dataset.
+        run("yolo", f"cfg={configs / 'detector.yaml'}", f"data={data_yaml}", f"name={name}", "cache=ram",
+            *common)
         detector = RUNS / name / "weights" / "best.pt"
         run(sys.executable, "-m", "clean_sweep_data.evaluate_detector", "--model", detector,
             "--data", detector_data, "--device", "0",
