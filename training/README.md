@@ -90,6 +90,36 @@ so you can compare runs.
 
 No NVIDIA GPU? On an Apple Silicon Mac add `device=mps batch=16`. It works, just slower.
 
+### No NVIDIA GPU: train on Kaggle (free)
+
+Kaggle gives free T4 GPU time (about 30 h a week, up to 12 h per run). A run keeps going with the
+browser closed. Docker or a VM on a Mac can't use its GPU, so they're slower than `device=mps`.
+
+One-time setup:
+1. On kaggle.com, verify your phone number (Settings), which GPU and internet access need.
+   Then create an API token (Settings → API → Create New Token) and save it as `~/.kaggle/kaggle.json`
+   with `chmod 600`.
+2. Change `audrey518` in `kaggle/kernel-metadata.json` and `kaggle/push.sh` to your Kaggle username.
+3. Upload the built data as a private dataset (about 1.8 GB). `--copy` makes real files instead of symlinks:
+   ```bash
+   uv run build-detector-dataset --copy --out data/kaggle/detector
+   cp -R data/classifier data/kaggle/classifier
+   # write data/kaggle/dataset-metadata.json: {"title": ..., "id": "<user>/clean-sweep-litter", "licenses": [{"name": "other"}]}
+   uv run --with kaggle --with six kaggle datasets create -p data/kaggle --dir-mode zip
+   ```
+
+Each run uploads the current code and configs, then trains both models, evaluates them on the
+test split, and exports INT8 ([`kaggle/train.py`](kaggle/train.py)):
+
+```bash
+kaggle/push.sh
+uv run --with kaggle --with six kaggle kernels status <user>/clean-sweep-train
+uv run --with kaggle --with six kaggle kernels output <user>/clean-sweep-train -p runs/kaggle   # when complete
+```
+
+To retrain after changing the data, rebuild `data/kaggle` and run
+`kaggle datasets version -p data/kaggle --dir-mode zip -m "..."` instead of `create`.
+
 ## Baseline results (12 epochs on an M1 Mac, TACO + COCO negatives)
 
 A short run to check the pipeline end to end. The full GPU run should do better.
