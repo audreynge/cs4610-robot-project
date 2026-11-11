@@ -26,6 +26,9 @@ run_test() {
   echo "== perception tests"
   uv run --with pytest --with pyyaml --with numpy --with opencv-python-headless \
     env PYTHONPATH=src/clean_sweep_perception pytest -q src/clean_sweep_perception/test
+  echo "== manipulation tests"
+  uv run --with pytest --with numpy \
+    env PYTHONPATH=src/clean_sweep_manipulation pytest -q src/clean_sweep_manipulation/test
   echo "== training tests"
   (cd training && uv run --group dev pytest -q)
 }

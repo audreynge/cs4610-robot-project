@@ -52,6 +52,7 @@ ROS 2 packages live in `src/` (build with `colcon build` from the repo root).
 
 - [`src/clean_sweep_interfaces`](src/clean_sweep_interfaces): shared messages (`LitterObject`, `LitterObjectArray`, `DetectLitter`)
 - [`src/clean_sweep_perception`](src/clean_sweep_perception/README.md): perception nodes, including a ground-truth stub for simulation
+- [`src/clean_sweep_manipulation`](src/clean_sweep_manipulation/README.md): lift, arm and gripper control, litter pick with grasp check and retry, and bin drop
 - [`training`](training/README.md): dataset download and build tools, plus GPU training for the perception models
 - [`docker`](docker/README.md): ROS 2 container (Humble or Jazzy) for building and running the packages
 
