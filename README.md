@@ -46,6 +46,33 @@ You only need [uv](https://docs.astral.sh/uv/getting-started/installation/), not
 
 To add your subsystem (e.g. `--navigation`), see the comment at the top of [`run.sh`](run.sh).
 
+### On the robot
+
+The robot runs ROS 2 natively, so it doesn't need Docker. On a Mac, use [`docker`](docker/README.md) instead.
+
+```bash
+# Build once, and again after pulling changes
+colcon build && source install/setup.bash
+pip install -r src/clean_sweep_perception/requirements.txt
+
+# Drivers, each in its own terminal: the robot in position mode, plus the head camera
+# (the RealSense launch must publish depth aligned to color)
+ros2 launch stretch_core stretch_driver.launch.py mode:=position
+
+# Perception: detection, tracking, and the scan/refine/verify_pickup services
+ros2 launch clean_sweep_perception perception.launch.py      # add output_frame:=odom if no map is running
+
+# Manipulation (set the platform first; CLEAN_SWEEP_DEX_WRIST=1 for a dex wrist)
+export CLEAN_SWEEP_PLATFORM=real CLEAN_SWEEP_DEX_WRIST=0
+ros2 run clean_sweep_manipulation demo_arm_gripper        # move each joint, step by step
+ros2 run clean_sweep_manipulation calibrate_gripper       # measure the gripper values
+ros2 run clean_sweep_manipulation demo_pick --ros-args -p source:=perception   # pick the nearest confirmed litter
+```
+
+Before trusting either on the robot, check the robot-specific settings:
+[perception](src/clean_sweep_perception/README.md#settings-to-check-on-the-real-robot) (camera rotation, topics, head action, scan angles)
+and [manipulation](src/clean_sweep_manipulation/README.md#calibrate-before-trusting-a-grasp) (wrist, gripper, floor and bin values).
+
 ### Packages
 
 ROS 2 packages live in `src/` (build with `colcon build` from the repo root).
