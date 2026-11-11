@@ -18,6 +18,7 @@ what the project is. This file covers how to build, run and check changes.
 ```bash
 ./run.sh --test          # every test suite, no ROS needed (CI runs this on every push)
 ./run.sh --perception    # live webcam demo of the models, no ROS or Docker
+./run.sh --manipulation  # robot only: builds, starts stretch_driver (and perception for a pick), runs a demo
 
 # ROS 2 in Docker
 docker compose -f docker/compose.yaml build      # REQUIRED after any change in src/: the image copies src/ at build time
