@@ -222,6 +222,10 @@ def test_drop_confirms_release_with_a_closed_gripper():
     ap = io.moves("gripper_aperture")
     assert ap[0] > 0 and ap[-1] < 0              # opened over the bin, then closed to check
     assert io.j["wrist_extension"] == 0.0
+    # Backs up first, then lifts, then reaches out.
+    moves = [next(iter(c[1])) for c in io.calls if c[0] == "move"]
+    assert moves[:3] == ["translate_mobile_base", "joint_lift", "wrist_extension"]
+    assert io.calls[1][1]["translate_mobile_base"] == pytest.approx(-C.BIN_DROP_BACKUP)
 
 
 def test_drop_detects_stuck_object():

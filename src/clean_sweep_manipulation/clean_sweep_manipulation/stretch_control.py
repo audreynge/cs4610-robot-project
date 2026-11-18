@@ -269,8 +269,8 @@ class StretchControl:
                 "message": "grasp failed on every attempt"}
 
     # ---------------------------------------------------------- dropping
-    def drop_in_bin(self, lift=C.BIN_DROP_LIFT, arm=C.BIN_DROP_ARM):
-        """Navigation parked with the bin on the arm side: raise above the rim,
+    def drop_in_bin(self, lift=C.BIN_DROP_LIFT, arm=C.BIN_DROP_ARM, backup=C.BIN_DROP_BACKUP):
+        """Bin on the arm side: drive `backup` m backward, raise above the rim,
         reach over, open, come back, then confirm the gripper is empty.
 
         The empty check closes the gripper after retracting: open fingers can't tell
@@ -278,6 +278,8 @@ class StretchControl:
         Returns True if the object was released.
         """
         self.position_mode()
+        if backup > 0:
+            self.drive_base(-backup)
         self.set_lift(lift)
         self.set_arm(arm)
         self.open_gripper()

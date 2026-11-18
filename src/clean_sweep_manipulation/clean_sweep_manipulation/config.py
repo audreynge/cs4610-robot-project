@@ -105,5 +105,7 @@ GRIPPER_BY_PLATFORM = {
 GRIPPER = GRIPPER_BY_PLATFORM[PLATFORM]
 
 # -------------------------------------------------------------- dropping
-BIN_DROP_LIFT = 0.80        # lift height that clears the bin rim (m), CALIBRATE
-BIN_DROP_ARM = 0.25         # arm extension that puts the gripper over the opening (m), CALIBRATE
+# Hardcoded for the demo video: back away from the pick spot, then reach high and far.
+BIN_DROP_BACKUP = 0.30      # drive this far backward before dropping (m); 0 = don't move
+BIN_DROP_LIFT = 0.90        # lift height that clears the bin rim (m), CALIBRATE
+BIN_DROP_ARM = 0.45         # arm extension that puts the gripper over the opening (m), CALIBRATE
