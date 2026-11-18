@@ -99,16 +99,29 @@ run_manipulation() {
   colcon build
   set +u; source install/setup.bash; set -u  # ROS setup scripts read unset variables
 
+  # broadcast_odom_tf: perception reports litter in odom, so base_link -> odom must exist.
   start_unless_running stretch_driver stretch_driver \
-    ros2 launch stretch_core stretch_driver.launch.py mode:=position
+    ros2 launch stretch_core stretch_driver.launch.py mode:=position broadcast_odom_tf:=True
 
   if [ "$manip_mode" = pick ] && [ ${#args[@]} -eq 0 ]; then
     # No coordinates given: pick the nearest litter that perception has confirmed.
     if ! ros2 topic list 2>/dev/null | grep -qx /camera/color/image_raw; then
-      echo "WARNING: no /camera/color/image_raw topic. Start the head camera, or perception sees nothing." >&2
+      local cam_log=/tmp/clean_sweep_camera.log
+      echo "== starting the head camera (log: $cam_log)"
+      setsid ros2 launch stretch_core d435i_high_resolution.launch.py > "$cam_log" 2>&1 &
+      started_pids+=($!)
+      for _ in $(seq 1 30); do
+        ros2 topic list 2>/dev/null | grep -qx /camera/color/image_raw && break
+        sleep 1
+      done
+      if ! ros2 topic list 2>/dev/null | grep -qx /camera/color/image_raw; then
+        echo "WARNING: still no /camera/color/image_raw after 30 s. End of $cam_log:" >&2
+        tail -n 20 "$cam_log" >&2
+      fi
     fi
+    # No map on the robot: track litter in odom (survives the base turning to line up).
     start_unless_running litter_registry perception \
-      ros2 launch clean_sweep_perception perception.launch.py ${PERCEPTION_ARGS:-}
+      ros2 launch clean_sweep_perception perception.launch.py ${PERCEPTION_ARGS:-output_frame:=odom}
     args=(-p source:=perception)
   fi
 

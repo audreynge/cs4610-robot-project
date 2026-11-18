@@ -1,7 +1,8 @@
 """Pick one object, then (optionally) test the bin drop.
 
-Target from perception (or its ground-truth stub in sim): picks the nearest
-CONFIRMED object from litter/detect.
+Target from perception (or its ground-truth stub in sim): points the head at the floor
+on the arm side (-p head_pan:=, -p head_tilt:= in rad), waits up to detect_timeout s for
+a CONFIRMED object from litter/detect, and picks the nearest.
 
     ros2 run clean_sweep_manipulation demo_pick --ros-args -p source:=perception
 
@@ -17,6 +18,7 @@ where it started; pass -p return_to_start:=false to stay put.
 """
 
 import math
+import time
 
 from clean_sweep_manipulation.robot_io import _wait, make_robot
 
@@ -26,17 +28,29 @@ def _param(node, name, default):
     return default if p is None or p.value is None else p.value
 
 
-def _nearest_confirmed(robot):
+def _nearest_confirmed(robot, timeout_s=60.0):
+    """Poll litter/detect until something is CONFIRMED (the registry needs a few frames)."""
     from clean_sweep_interfaces.msg import LitterObject
     from clean_sweep_interfaces.srv import DetectLitter
 
     client = robot.node.create_client(DetectLitter, "litter/detect")
-    if not client.wait_for_service(timeout_sec=10.0):
+    if not client.wait_for_service(timeout_sec=30.0):
         raise RuntimeError("litter/detect not available: start perception or ground_truth_stub")
-    res = _wait(client.call_async(DetectLitter.Request()), 10.0)
-    objs = [o for o in (res.objects if res else []) if o.state == LitterObject.STATE_CONFIRMED]
-    if not objs:
-        raise RuntimeError("no CONFIRMED litter objects")
+    deadline = time.monotonic() + timeout_s
+    seen = None
+    while True:
+        res = _wait(client.call_async(DetectLitter.Request()), 10.0)
+        found = list(res.objects) if res else []
+        objs = [o for o in found if o.state == LitterObject.STATE_CONFIRMED]
+        if objs:
+            break
+        if len(found) != seen:
+            seen = len(found)
+            print(f"waiting for a CONFIRMED object ({seen} tracked, none confirmed yet)...")
+        if time.monotonic() > deadline:
+            raise RuntimeError(f"no CONFIRMED litter after {timeout_s:.0f} s "
+                               f"({len(found)} tracked). Is it in the camera's view?")
+        time.sleep(1.0)
 
     def dist(o):
         p = robot.to_base_frame((o.position.point.x, o.position.point.y, o.position.point.z),
@@ -52,7 +66,11 @@ def main():
     align = bool(_param(node, "align_base", True))
 
     if _param(node, "source", "manual") == "perception":
-        litter = _nearest_confirmed(robot)
+        # Look down at the floor on the arm side (pan negative = right, tilt negative = down).
+        robot.travel_pose()
+        robot.set_head(pan=float(_param(node, "head_pan", -math.pi / 2)),
+                       tilt=float(_param(node, "head_tilt", -1.0)))
+        litter = _nearest_confirmed(robot, float(_param(node, "detect_timeout", 60.0)))
         print(f"Target: id={litter.id} {litter.label} width={litter.width:.3f} "
               f"height={litter.height:.3f} in {litter.position.header.frame_id}")
         out = robot.pick_litter(litter, align_base=align)
