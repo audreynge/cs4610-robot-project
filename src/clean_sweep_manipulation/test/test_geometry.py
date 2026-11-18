@@ -76,6 +76,9 @@ def test_gripper_width_and_holding():
     # Effort check: position looks held but motor isn't pushing -> not holding.
     assert not g.is_holding_object(0.10, -0.05, 0.05, finger_effort=2.0, min_effort=10.0)
     assert g.is_holding_object(0.10, -0.05, 0.05, finger_effort=-15.0, min_effort=10.0)
+    # Position check off (flexible fingertips): effort alone decides.
+    assert g.is_holding_object(-0.08, -0.08, None, finger_effort=-23.5, min_effort=21.7)
+    assert not g.is_holding_object(-0.08, -0.08, None, finger_effort=-19.7, min_effort=21.7)
 
 
 def test_check_reach():

@@ -154,7 +154,8 @@ def test_slip_on_lift_counts_as_failure():
 
 def test_too_large_skips_without_moving():
     io = FakeIO()
-    out = StretchControl(io).pick_object_at(CAN_FLOOR, object_width=0.15, object_height=0.2)
+    out = StretchControl(io).pick_object_at(CAN_FLOOR, object_width=C.GRIPPER["max_open"] + 0.01,
+                                         object_height=0.2)
     assert out["result"] == StretchControl.TOO_LARGE
     assert not [c for c in io.calls if c[0] == "move"]
 

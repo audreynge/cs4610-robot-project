@@ -79,14 +79,18 @@ DEFAULT_RETRIES = 2         # extra grasp attempts after the first
 
 # Gripper numbers differ between sim and the real robot. Fill them in from calibrate_gripper.
 GRIPPER_BY_PLATFORM = {
+    # Measured on the Stretch 3 (2026-11-18). gripper_aperture is NOT a real width: the driver
+    # maps it linearly onto the motor, and 0.09 only opens the fingers partway.
     "real": {
-        "open": 0.09,                # gripper_aperture for fully open (m)
-        "closed": -0.03,             # below 0 = keep squeezing, CALIBRATE
+        "open": 0.15,                # gripper_aperture for open; the driver stops at its own limit
+        "closed": -0.03,             # below 0 = keep squeezing
         "min_open": 0.03,
-        "max_open": 0.09,            # widest graspable object is about this, CALIBRATE
-        "empty_closed_finger": 0.0,  # finger reading when closed on nothing, CALIBRATE
-        "holding_tolerance": 0.03,   # finger must stop this far above the empty value, CALIBRATE
-        "min_holding_effort": 0.0,   # |effort| when squeezing; 0 = effort check off, CALIBRATE
+        "max_open": 0.15,
+        "empty_closed_finger": -0.0805,  # finger reading when closed on nothing
+        # Position check OFF: the fingertips flex, so the finger reads -0.080 whether it's
+        # holding something (a book) or not. Only the squeeze effort differs.
+        "holding_tolerance": None,
+        "min_holding_effort": 21.7,  # |effort|: about 19.7 closed on nothing, 23.5 on a book
     },
     "sim": {
         "open": 0.09,                # CALIBRATE (the sim passes this straight to MuJoCo)

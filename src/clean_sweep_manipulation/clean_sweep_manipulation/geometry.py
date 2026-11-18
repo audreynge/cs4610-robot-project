@@ -127,8 +127,11 @@ def is_holding_object(finger_pos_after_close, empty_closed_pos, tolerance,
 
     Both checks must pass (position AND effort), which avoids false positives
     from a finger that stopped early for another reason.
+
+    tolerance=None turns the position check off. The Stretch 3's fingertips flex,
+    so the motor reaches the same closed position with or without an object.
     """
-    pos_ok = (finger_pos_after_close - empty_closed_pos) > tolerance
+    pos_ok = tolerance is None or (finger_pos_after_close - empty_closed_pos) > tolerance
     eff_ok = True
     if min_effort > 0.0 and finger_effort is not None:
         eff_ok = abs(finger_effort) >= min_effort

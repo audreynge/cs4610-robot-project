@@ -37,14 +37,20 @@ def main():
     diff = full - empty
     print(f"\nPaste into config.GRIPPER_BY_PLATFORM['{C.PLATFORM}']:")
     print(f"    'empty_closed_finger': {empty:.4f},")
-    print(f"    'holding_tolerance': {max(diff / 2, 0.005):.4f},   # half of {diff:.4f}")
+    if diff <= 0.01:
+        print(f"    'holding_tolerance': None,   # position barely changed ({diff:.4f}): check off")
+    else:
+        print(f"    'holding_tolerance': {diff / 2:.4f},   # half of {diff:.4f}")
     if abs(full_eff) > abs(empty_eff) + 2.0:
         print(f"    'min_holding_effort': {(abs(full_eff) + abs(empty_eff)) / 2:.1f},")
     else:
         print("    'min_holding_effort': 0.0,   # effort didn't change clearly; leave the check off")
     if diff <= 0.01:
-        print("WARNING: empty and holding readings are almost equal. Check the open/closed "
-              "values, or try a bigger object.")
+        print("NOTE: the finger position is the same with and without the object (flexible "
+              "fingertips), so the grasp check can only use effort.")
+        if abs(full_eff) <= abs(empty_eff) + 2.0:
+            print("WARNING: effort didn't change clearly either, so the grasp check can't tell. "
+                  "Check the object was really squeezed.")
 
 
 if __name__ == "__main__":
