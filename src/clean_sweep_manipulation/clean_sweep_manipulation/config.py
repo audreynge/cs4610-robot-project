@@ -71,7 +71,10 @@ GRASP_WIDTH_MARGIN = 0.02   # open this much wider than the object (m)
 REACH_X_TOLERANCE = 0.03    # object may be this far ahead/behind the arm line (m)
 MIN_SIDE_DISTANCE = 0.0     # object must be at least this far out from the retracted gripper (m)
 GRASP_SETTLE_S = 0.5        # wait after closing/opening before checking (s)
-LIFT_CONTACT_EFFORT = 30.0  # contact threshold when lowering, CALIBRATE
+LIFT_CONTACT_EFFORT = 60.0  # contact threshold when lowering (effort_pct). Must be above the
+                            # lift's holding effort (37 measured on the Stretch 3), or it
+                            # "detects contact" before moving.
+CONTACT_RETRY_WAIT_S = 0.5  # after a contact stop, wait this long before retrying the next move
 DEFAULT_RETRIES = 2         # extra grasp attempts after the first
 
 # Gripper numbers differ between sim and the real robot. Fill them in from calibrate_gripper.

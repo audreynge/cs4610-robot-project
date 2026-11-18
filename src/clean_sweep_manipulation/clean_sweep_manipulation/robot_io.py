@@ -129,23 +129,34 @@ class RosStretchIO:
         goal.trajectory.joint_names = names
         goal.trajectory.points = [point]
 
+        ok, contact = self._send(goal, pose)
+        if not ok and contact and not efforts:
+            # After a contact stop the motor reports in_guarded_event for a moment, and the
+            # driver aborts the NEXT move as "contact detected" before it starts. Retry once.
+            self.sleep(C.CONTACT_RETRY_WAIT_S)
+            self.log("info", f"retrying move {pose} after a stale contact flag")
+            ok, _ = self._send(goal, pose)
+        return ok
+
+    def _send(self, goal, pose):
+        """Send one trajectory goal and wait. Returns (succeeded, ended_on_contact)."""
         handle = _wait(self._traj.send_goal_async(goal), 5.0)
         if handle is None or not handle.accepted:
             self.log("error", f"move {pose} was rejected")
-            return False
+            return False, False
         result = _wait(handle.get_result_async(), self._timeout)
         if result is None:
             handle.cancel_goal_async()
             self.log("error", f"move {pose} timed out")
-            return False
+            return False, False
         # error_code defaults to SUCCESSFUL, so aborted/cancelled goals are caught by status.
         if (result.status != GoalStatus.STATUS_SUCCEEDED
                 or result.result.error_code != FollowJointTrajectory.Result.SUCCESSFUL):
             # A contact-threshold stop can end a lift move early; that's expected when lowering.
             self.log("warn", f"move {pose} ended with status {result.status}, "
                              f"error {result.result.error_code} {result.result.error_string}")
-            return False
-        return True
+            return False, "contact detected" in result.result.error_string
+        return True, False
 
     def switch_mode(self, name) -> bool:
         return self._trigger(self._modes[name], C.MODE_SERVICES[name])
