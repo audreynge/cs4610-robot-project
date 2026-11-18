@@ -57,7 +57,7 @@ class FakeIO:
             if name == "gripper_aperture":
                 if val < 0:   # closing
                     g = self.grasp_center()
-                    near = self.obj is not None and math.dist(g, self.obj) < 0.02
+                    near = self.held or (self.obj is not None and math.dist(g, self.obj) < 0.02)
                     self.held = near
                     self.j["joint_gripper_finger_left"] = 0.12 if near else -0.05
                     self.eff = -20.0 if near else -1.0
@@ -144,6 +144,22 @@ def test_missed_grasp_retries_wider_then_gives_up():
     assert out["attempts"] == 3
     opens = [a for a in io.moves("gripper_aperture") if 0 < a < C.GRIPPER["open"]]
     assert opens == sorted(opens) and opens[-1] > opens[0]   # widened each time
+
+
+def test_rechecks_after_the_gripper_backs_off():
+    # Real gripper: stall protection drops the effort while lifting, though the object
+    # is still held. The pick must squeeze again before the second check, not drop it.
+    io = FakeIO(obj_base=CAN_GRASP)
+    io_move = io.move
+
+    def move(pose, efforts=None):
+        ok = io_move(pose, efforts)
+        if io.held and pose.get("joint_lift") == C.SAFE_LIFT:
+            io.eff = -7.0                      # backed off, still holding
+        return ok
+    io.move = move
+    out = StretchControl(io, grasp_mode="top").pick_object_at(CAN_FLOOR, CAN_W, CAN_H, retries=0)
+    assert out["result"] == StretchControl.SUCCESS, out
 
 
 def test_slip_on_lift_counts_as_failure():

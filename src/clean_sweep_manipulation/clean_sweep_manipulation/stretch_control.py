@@ -249,8 +249,13 @@ class StretchControl:
             self.io.sleep(C.GRASP_SETTLE_S)
             holding = self.is_holding()
 
-            # Raise and check again: a weak grasp slips here.
+            # Raise and check again: a weak grasp slips here. The gripper's stall protection
+            # backs the motor off while it squeezes (the springy fingers keep holding), so the
+            # effort has dropped by now: squeeze again before checking.
             self.set_lift(C.SAFE_LIFT)
+            if holding:
+                self.close_gripper()
+                self.io.sleep(C.GRASP_SETTLE_S)
             if holding and self.is_holding():
                 self.retract_arm()
                 return {"result": self.SUCCESS, "attempts": attempt, "reach": reach, "message": ""}
