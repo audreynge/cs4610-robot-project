@@ -33,6 +33,7 @@ class StretchControl:
     def __init__(self, io, grasp_mode=C.GRASP_MODE):
         self.io = io
         self.grasp_mode = grasp_mode
+        self._base_moves = []   # (joint, amount) of each base move, so return_to_start can undo them
 
     # ------------------------------------------------------------ logging
     def _info(self, msg):
@@ -123,11 +124,30 @@ class StretchControl:
 
     def rotate_base(self, angle_rad):
         """Turn in place (positive = counter-clockwise). Position mode only."""
-        return self.io.move({C.BASE_ROTATE: angle_rad})
+        return self._move_base(C.BASE_ROTATE, angle_rad)
 
     def drive_base(self, distance_m):
         """Drive straight (negative = backward). Position mode only."""
-        return self.io.move({C.BASE_TRANSLATE: distance_m})
+        return self._move_base(C.BASE_TRANSLATE, distance_m)
+
+    def _move_base(self, joint, amount):
+        ok = self.io.move({joint: amount})
+        if ok:
+            self._base_moves.append((joint, amount))
+        return ok
+
+    def return_to_start(self):
+        """Undo every base turn and drive since this object was made, last first.
+        Retracts the arm before moving. Returns True if every undo move succeeded."""
+        if not self._base_moves:
+            return True
+        self.travel_pose()
+        self._info(f"returning to the start: undoing {len(self._base_moves)} base move(s)")
+        ok = True
+        for joint, amount in reversed(self._base_moves):
+            ok = self.io.move({joint: -amount}) and ok
+        self._base_moves = []
+        return ok
 
     def stow(self):
         return self.io.stow()

@@ -12,6 +12,8 @@ Target typed in: object center ON THE FLOOR, in `frame` (default base_link), plu
 
 align_base defaults to true here (manipulation turns/drives the base itself);
 pass -p align_base:=false once navigation does the final approach.
+At the end it undoes its own base moves (alignment turn, bin-drop back-up) so it ends
+where it started; pass -p return_to_start:=false to stay put.
 """
 
 import math
@@ -68,6 +70,8 @@ def main():
         print(f"  drive the base by dx={out['reach']['dx']:.3f} m")
     if out["result"] == robot.SUCCESS and input("Test the bin drop? [y/N] ").lower() == "y":
         print("released:", robot.drop_in_bin())
+    if _param(node, "return_to_start", True):
+        print("back at the start:", robot.return_to_start())
 
 
 if __name__ == "__main__":

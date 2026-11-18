@@ -228,6 +228,24 @@ def test_drop_confirms_release_with_a_closed_gripper():
     assert io.calls[1][1]["translate_mobile_base"] == pytest.approx(-C.BIN_DROP_BACKUP)
 
 
+def test_return_to_start_undoes_base_moves_in_reverse():
+    io = FakeIO(obj_base=None)
+    robot = StretchControl(io)
+    robot.rotate_base(-0.08)
+    robot.drive_base(0.02)
+    robot.drop_in_bin()                          # backs up BIN_DROP_BACKUP
+    io.calls.clear()
+    assert robot.return_to_start() is True
+    base = [c[1] for c in io.calls if c[0] == "move"
+            and ("rotate_mobile_base" in c[1] or "translate_mobile_base" in c[1])]
+    assert base == [{"translate_mobile_base": pytest.approx(C.BIN_DROP_BACKUP)},
+                    {"translate_mobile_base": pytest.approx(-0.02)},
+                    {"rotate_mobile_base": pytest.approx(0.08)}]
+    assert io.j["wrist_extension"] == 0.0        # arm in before driving
+    io.calls.clear()
+    assert robot.return_to_start() is True and not io.calls   # nothing left to undo
+
+
 def test_drop_detects_stuck_object():
     io = FakeIO(obj_base=None)
     robot = StretchControl(io)
