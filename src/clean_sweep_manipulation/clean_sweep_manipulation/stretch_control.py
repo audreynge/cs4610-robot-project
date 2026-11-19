@@ -199,13 +199,23 @@ class StretchControl:
         if offset < C.WRIST_CENTER_TOLERANCE:
             return obj
         self._info(f"wrist camera: re-centering by {offset * 100:.1f} cm")
-        obj = (match[0], match[1], obj[2])
+        return self.correct_reach((match[0], match[1], obj[2]))
+
+    def correct_reach(self, obj):
+        """Arm out: move the grasp center onto obj in the floor plane, from where TF says the
+        gripper is now (a base nudge along x, the arm along y). Returns obj in the new base frame.
+
+        The arm doesn't extend exactly along -y (measured: 2 cm forward drift at full reach),
+        so a plan made with the arm retracted lands beside the object.
+        """
         plan = G.plan_reach(obj, self.grasp_center_in_base(), self.arm_extension(),
                             self.lift_height(), arm_limits=C.ARM_LIMITS, lift_limits=C.LIFT_LIMITS)
-        if abs(plan["drive_x"]) > 0.005:
+        if abs(plan["drive_x"]) > C.REACH_CORRECTION_MIN:
+            self._info(f"reach: nudging the base {plan['drive_x'] * 100:.1f} cm to line up")
             self.drive_base(plan["drive_x"])
             obj = tuple(G.point_after_base_translation(obj, plan["drive_x"]))
-        self.set_arm(plan["arm_ext"])
+        if abs(plan["arm_ext"] - self.arm_extension()) > C.REACH_CORRECTION_MIN:
+            self.set_arm(plan["arm_ext"])
         return obj
 
     def wrist_sees_it_held(self, obj, object_height):
@@ -273,13 +283,15 @@ class StretchControl:
     def pick_litter(self, litter, retries=C.DEFAULT_RETRIES, align_base=False):
         """Pick a clean_sweep_interfaces/LitterObject (use the one litter/refine returns).
 
-        Uses its position (object center on the floor, any frame with TF to
-        base_link, normally "map"), width and height.
+        Uses its position (the object's center, any frame with TF to base_link, normally
+        "map" or "odom"), width and height.
         """
         frame = litter.position.header.frame_id
         p = litter.position.point
         try:
-            floor_base = self.to_base_frame((p.x, p.y, p.z), frame)
+            # Perception reports the object's center (z = half its height), but the pick
+            # aims from the floor point: using the center aimed at the object's top.
+            floor_base = self.to_base_frame((p.x, p.y, p.z - float(litter.height) / 2), frame)
         except RuntimeError as e:
             self._warn(f"pick: {e}")
             return {"result": self.ERROR, "attempts": 0, "reach": None, "message": str(e)}
@@ -342,6 +354,7 @@ class StretchControl:
             else:
                 # Reach over the object, line up with the wrist camera, then come down onto it.
                 self.set_arm(plan["arm_ext"])
+                obj = self.correct_reach(obj)
                 obj = self.center_over_object(obj)
                 self.lower_lift_until_contact(plan["lift"])
 

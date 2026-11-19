@@ -67,6 +67,7 @@ else:
 GRASP_HEIGHT_FRACTION = 0.5
 GRASP_MIN_HEIGHT = 0.015    # m above the floor, CALIBRATE
 GRASP_Z_OFFSET = 0.0        # extra height on top of the above (m), CALIBRATE
+REACH_CORRECTION_MIN = 0.005  # arm out: correct the gripper if it's further than this off (m)
 REACH_X_TOLERANCE = 0.03    # object may be this far ahead/behind the arm line (m)
 MIN_SIDE_DISTANCE = 0.0     # object must be at least this far out from the retracted gripper (m)
 # Wrist (gripper) camera, dex wrist only: run.sh runs a second litter_detector on it, publishing

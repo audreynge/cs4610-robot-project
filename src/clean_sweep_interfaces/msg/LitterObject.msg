@@ -13,7 +13,7 @@ float32 label_confidence      # classifier confidence, 0..1
 float32 detection_confidence  # detector confidence, 0..1
 string bin                    # where it goes: recycling | landfill (see perception config/bins.yaml)
 
-# Object center on the floor. header.frame_id is normally "map" so the
+# Object center (z = half its height). header.frame_id is normally "map" so the
 # position stays valid while the robot moves; transform with tf2 as needed.
 geometry_msgs/PointStamped position
 
