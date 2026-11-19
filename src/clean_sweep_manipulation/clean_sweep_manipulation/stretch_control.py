@@ -356,7 +356,10 @@ class StretchControl:
                 self.set_arm(plan["arm_ext"])
                 obj = self.correct_reach(obj)
                 obj = self.center_over_object(obj)
-                self.lower_lift_until_contact(plan["lift"])
+                # Height from where the gripper is now: it rises as the arm extends
+                # (1.5 cm at 0.47 m on the Stretch 3), so the plan made with the arm in is high.
+                lift = self.lift_height() + (obj[2] - self.grasp_center_in_base()[2])
+                self.lower_lift_until_contact(lift)
 
             # Close, lift, squeeze again, then check once: a weak grasp slips while lifting.
             # The gripper's stall protection backs the motor off while it squeezes (the springy

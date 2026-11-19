@@ -26,7 +26,7 @@ S45 = math.sin(math.pi / 4)
 
 class FakeIO:
     def __init__(self, obj_base=None, slips=False, wrist_camera=False, false_hold=False,
-                 soft=False, wheel_slip=0.0, arm_drift=0.0):
+                 soft=False, wheel_slip=0.0, arm_drift=0.0, arm_rise=0.0):
         self.j = {"joint_lift": 0.5, "wrist_extension": 0.0, "joint_gripper_finger_left": 0.0}
         self.eff = 0.0
         self.obj = obj_base          # (x, y, z) of the object's grasp point in base_link
@@ -36,6 +36,7 @@ class FakeIO:
         self.soft = soft                  # held, but barely loads the fingers (paper)
         self.wheel_slip = wheel_slip      # base moves fall short by this fraction (carpet)
         self.arm_drift = arm_drift        # grasp center moves this much +x per m of extension
+        self.arm_rise = arm_rise          # ... and this much +z per m of extension
         self.held = False
         self.calls = []              # ("move", pose, efforts) | ("mode", name)
         # map frame pose in base_link: robot at (1, 2) in map, facing +90 deg.
@@ -50,7 +51,8 @@ class FakeIO:
 
     def grasp_center(self):
         ext = self.j["wrist_extension"]
-        return (self.arm_drift * ext, -(GRASP_Y0 + ext), self.j["joint_lift"] - GRASP_Z_DROP)
+        return (self.arm_drift * ext, -(GRASP_Y0 + ext),
+                self.j["joint_lift"] - GRASP_Z_DROP + self.arm_rise * ext)
 
     def lookup(self, target, source):
         if source == "link_grasp_center":
@@ -375,7 +377,7 @@ def test_approach_without_a_measurement_says_not_settled():
 def test_top_grasp_corrects_for_the_arm_drifting_forward_as_it_extends():
     # Measured on the Stretch 3: 2.2 cm forward at 0.49 m of reach, more than the 2 cm the
     # fake gripper tolerates. The pick re-reads the grasp center after extending and nudges.
-    io = FakeIO(obj_base=CAN_GRASP, arm_drift=0.045)
+    io = FakeIO(obj_base=CAN_GRASP, arm_drift=0.08, arm_rise=0.08)   # 2.4 cm each at 0.3 m
     out = StretchControl(io, grasp_mode="top").pick_object_at(CAN_FLOOR, CAN_W, CAN_H, retries=0)
     assert out["result"] == StretchControl.SUCCESS, out
     assert io.moves("translate_mobile_base")       # nudged along x
