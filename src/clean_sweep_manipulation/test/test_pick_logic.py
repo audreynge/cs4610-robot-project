@@ -182,6 +182,24 @@ def test_rechecks_after_the_gripper_backs_off():
     assert out["result"] == StretchControl.SUCCESS, out
 
 
+def test_low_reading_before_the_lift_doesnt_drop_a_held_object():
+    # Real gripper: the effort right after the first close can read like an empty gripper.
+    io = FakeIO(obj_base=CAN_GRASP)
+    io_move = io.move
+    closes = []
+
+    def move(pose, efforts=None):
+        ok = io_move(pose, efforts)
+        if pose.get("gripper_aperture", 0) < 0:
+            closes.append(1)
+            if len(closes) == 1:
+                io.eff = -1.0                  # first squeeze reads low, still holding
+        return ok
+    io.move = move
+    out = StretchControl(io, grasp_mode="top").pick_object_at(CAN_FLOOR, CAN_W, CAN_H, retries=0)
+    assert out["result"] == StretchControl.SUCCESS, out
+
+
 def test_slip_on_lift_counts_as_failure():
     io = FakeIO(obj_base=CAN_GRASP, slips=True)
     out = StretchControl(io, grasp_mode="side").pick_object_at(CAN_FLOOR, CAN_W, CAN_H, retries=0)

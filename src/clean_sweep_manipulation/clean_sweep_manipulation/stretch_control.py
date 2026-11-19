@@ -273,8 +273,8 @@ class StretchControl:
 
         Side grasp (standard gripper): open, lower to the grasp height, extend around
         the object, close. Top grasp (dex wrist): open, extend over it, lower until
-        contact, close. Then check the grasp (finger position and effort), lift, check
-        again (catches slips), retract. On failure, retry.
+        contact, close. Then lift, squeeze again and check the grasp (finger position and
+        effort; catches slips), retract. On failure, retry.
 
         Returns {"result": <code>, "attempts": n, "reach": dict | None, "message": str}.
         """
@@ -322,24 +322,23 @@ class StretchControl:
                 obj = self.center_over_object(obj)
                 self.lower_lift_until_contact(plan["lift"])
 
+            # Close, lift, squeeze again, then check once: a weak grasp slips while lifting.
+            # The gripper's stall protection backs the motor off while it squeezes (the springy
+            # fingers keep holding), so a reading before the lift, or without the second
+            # squeeze, can look empty while holding. Checking before the lift too made the
+            # pick drop objects it had lifted fine.
             self.close_gripper()
             self.io.sleep(C.GRASP_SETTLE_S)
-            holding = self.is_holding()
-
-            # Raise and check again: a weak grasp slips here. The gripper's stall protection
-            # backs the motor off while it squeezes (the springy fingers keep holding), so the
-            # effort has dropped by now: squeeze again before checking.
             self.set_lift(C.SAFE_LIFT)
-            if holding:
-                self.close_gripper()
-                self.io.sleep(C.GRASP_SETTLE_S)
+            self.close_gripper()
+            self.io.sleep(C.GRASP_SETTLE_S)
             wrist = self.wrist_sees_it_held(obj, object_height) if self.grasp_mode == "top" else None
             if wrist is False:
                 self._warn("wrist camera: the object is still on the floor")
             elif wrist:
                 # Soft things (paper) barely load the fingers, so trust the camera over effort.
                 self._info("wrist camera: the object is in the gripper")
-            if wrist or (wrist is None and holding and self.is_holding()):
+            if wrist or (wrist is None and self.is_holding()):
                 self.retract_arm()
                 return {"result": self.SUCCESS, "attempts": attempt, "reach": reach, "message": ""}
 
