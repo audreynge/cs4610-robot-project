@@ -1,0 +1,77 @@
+== building the workspace
+Starting >>> clean_sweep_interfaces
+Finished <<< clean_sweep_interfaces [0.44s]
+Starting >>> clean_sweep_manipulation
+Starting >>> clean_sweep_perception
+Finished <<< clean_sweep_manipulation [1.21s]
+Finished <<< clean_sweep_perception [1.22s]
+
+Summary: 3 packages finished [1.88s]
+== starting stretch_driver (log: /tmp/clean_sweep_stretch_driver.log)
+== starting litter_registry (log: /tmp/clean_sweep_perception.log)
+== no D405 wrist camera on USB: skipping the wrist camera checks
+== manipulation: demo_pick
+[WARN] [1795119591.701987100] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119592.203107360] [clean_sweep_demo_pick]: retrying move {'wrist_extension': 0.0} after a stale contact flag
+[WARN] [1795119592.220798673] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119593.596571504] [clean_sweep_demo_pick]: align: rotating base -8.7 deg
+[INFO] [1795119597.131955785] [clean_sweep_demo_pick]: approach: measured at (-0.049, -0.608) in base_link, dx=-0.000 side=0.477: in reach
+[WARN] [1795119597.171901465] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119597.673044069] [clean_sweep_demo_pick]: retrying move {'wrist_extension': 0.0} after a stale contact flag
+[INFO] [1795119597.751238616] [clean_sweep_demo_pick]: pick attempt 1/1 (top): {'drive_x': -6.935341102053821e-05, 'arm_ext': 0.48629305521057375, 'lift': 0.3011501937936657, 'clamped': False}
+[WARN] [1795119597.914668075] [clean_sweep_demo_pick]: move {'wrist_extension': 0.48629305521057375} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119598.415701496] [clean_sweep_demo_pick]: retrying move {'wrist_extension': 0.48629305521057375} after a stale contact flag
+[WARN] [1795119598.444211241] [clean_sweep_demo_pick]: move {'wrist_extension': 0.48629305521057375} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119601.449919234] [clean_sweep_demo_pick]: wrist camera: no detections, keeping the head camera's estimate
+[INFO] [1795119604.380779390] [clean_sweep_demo_pick]: pick: closing with the gripper at (-0.027, -0.608, 0.188), aim (-0.049, -0.608, 0.171) in base_link
+[INFO] [1795119612.628917577] [clean_sweep_demo_pick]: grasp check: finger=-0.071 effort=-7.7 holding=False
+[WARN] [1795119612.629397180] [clean_sweep_demo_pick]: pick: grasp attempt 1 failed
+[WARN] [1795119617.337957105] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119617.839229261] [clean_sweep_demo_pick]: retrying move {'wrist_extension': 0.0} after a stale contact flag
+[WARN] [1795119617.849648182] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119617.861336369] [clean_sweep_demo_pick]: align: rotating base -4.6 deg
+[INFO] [1795119620.455449690] [clean_sweep_demo_pick]: approach: measured at (-0.100, -0.612) in base_link, dx=-0.052 side=0.478: object is not lined up with the arm (drive the base by dx)
+[INFO] [1795119620.455839319] [clean_sweep_demo_pick]: align: rotating base -9.3 deg
+[WARN] [1795119624.128970205] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119624.630353053] [clean_sweep_demo_pick]: retrying move {'wrist_extension': 0.0} after a stale contact flag
+[WARN] [1795119624.659759505] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119624.733862425] [clean_sweep_demo_pick]: align: rotating base -4.7 deg
+[INFO] [1795119625.826223666] [clean_sweep_demo_pick]: pick attempt 1/1 (top): {'drive_x': 0.0002834214289919035, 'arm_ext': 0.5017416259386481, 'lift': 0.3062572260285402, 'clamped': False}
+[WARN] [1795119625.889478675] [clean_sweep_demo_pick]: move {'wrist_extension': 0.5017416259386481} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119626.391435513] [clean_sweep_demo_pick]: retrying move {'wrist_extension': 0.5017416259386481} after a stale contact flag
+[INFO] [1795119633.131458593] [clean_sweep_demo_pick]: wrist camera: no detections, keeping the head camera's estimate
+[INFO] [1795119636.061321394] [clean_sweep_demo_pick]: pick: closing with the gripper at (-0.027, -0.627, 0.189), aim (-0.049, -0.623, 0.177) in base_link
+[INFO] [1795119644.261164318] [clean_sweep_demo_pick]: grasp check: finger=-0.071 effort=-7.8 holding=False
+[WARN] [1795119644.261589446] [clean_sweep_demo_pick]: pick: grasp attempt 1 failed
+[WARN] [1795119648.975272631] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119649.476334251] [clean_sweep_demo_pick]: retrying move {'wrist_extension': 0.0} after a stale contact flag
+[WARN] [1795119649.488868074] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119649.497809899] [clean_sweep_demo_pick]: align: rotating base -9.1 deg
+[WARN] [1795119653.083293944] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119653.584368869] [clean_sweep_demo_pick]: retrying move {'wrist_extension': 0.0} after a stale contact flag
+[WARN] [1795119653.806393814] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119653.862456023] [clean_sweep_demo_pick]: align: rotating base -4.6 deg
+[INFO] [1795119654.983881578] [clean_sweep_demo_pick]: pick attempt 1/1 (top): {'drive_x': -9.655686188637935e-06, 'arm_ext': 0.5093537382207572, 'lift': 0.30627173451531176, 'clamped': False}
+[WARN] [1795119655.058880538] [clean_sweep_demo_pick]: move {'wrist_extension': 0.5093537382207572} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119655.559423799] [clean_sweep_demo_pick]: retrying move {'wrist_extension': 0.5093537382207572} after a stale contact flag
+[INFO] [1795119662.257858159] [clean_sweep_demo_pick]: wrist camera: no detections, keeping the head camera's estimate
+[INFO] [1795119665.173734703] [clean_sweep_demo_pick]: pick: closing with the gripper at (-0.026, -0.635, 0.191), aim (-0.048, -0.630, 0.177) in base_link
+[INFO] [1795119673.355039977] [clean_sweep_demo_pick]: grasp check: finger=-0.069 effort=-5.1 holding=False
+[WARN] [1795119673.355500105] [clean_sweep_demo_pick]: pick: grasp attempt 1 failed
+[WARN] [1795119677.931757235] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119678.432639174] [clean_sweep_demo_pick]: retrying move {'wrist_extension': 0.0} after a stale contact flag
+[WARN] [1795119678.458198002] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[WARN] [1795119678.483964551] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119678.984601441] [clean_sweep_demo_pick]: retrying move {'wrist_extension': 0.0} after a stale contact flag
+[WARN] [1795119679.338830501] [clean_sweep_demo_pick]: move {'wrist_extension': 0.0} ended with status 6, error 100 wrist_extension contact detected.
+[INFO] [1795119679.407627661] [clean_sweep_demo_pick]: returning to the start: undoing 12 base move(s)
+waiting for a CONFIRMED object (0 tracked, none confirmed yet)...
+Target: id=1 bottle width=0.073 height=0.170, at (-0.093, -0.610) in base_link
+refined: re-estimated from 3 close-range detections; moved 0.9 cm from the previous estimate
+attempt 1/3 missed: re-measuring the object (it may have moved)
+refined: re-estimated from 2 close-range detections; moved 0.8 cm from the previous estimate
+refine failed (not seen up close; it may have been a false positive)
+attempt 2/3 missed: re-measuring the object (it may have moved)
+refine failed (not seen up close; it may have been a false positive)
+RESULT: GRASP_FAILED after 3 attempt(s). grasp failed on every attempt
+back at the start: True
