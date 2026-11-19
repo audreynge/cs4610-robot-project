@@ -124,11 +124,6 @@ def plan_reach(obj_base, grasp_center_base, current_arm_ext, current_lift,
     return {"drive_x": drive_x, "arm_ext": arm_c, "lift": lift_c, "clamped": clamped}
 
 
-def gripper_open_width(object_width, margin, min_open, max_open):
-    """Aperture to open to before grasping: object width plus a margin, clamped."""
-    return min(max(object_width + margin, min_open), max_open)
-
-
 def is_holding_object(finger_pos_after_close, empty_closed_pos, tolerance,
                       finger_effort=None, min_effort=0.0):
     """Grasp check from finger position and effort.

@@ -24,7 +24,7 @@ Each object also has a `bin` (`recycling` or `landfill`) for sorting, set from
 [`config/bins.yaml`](config/bins.yaml). Items with low label confidence go to landfill, so a misread never contaminates recycling.
 
 States: `SEEN` (detected, not yet trusted) → `CONFIRMED` (seen 3+ times) → `TARGETED` → `PICKED` or `FAILED`.
-Only act on `CONFIRMED` objects. `width` is the gripper aperture to open to (add a margin).
+Only act on `CONFIRMED` objects. `width` is the object's largest horizontal extent (m).
 
 A typical loop for the state machine: `scan` → choose the nearest `CONFIRMED` object → `set_state TARGETED` → navigate next to it → `refine` → grasp → `verify_pickup` → deliver, or `set_state FAILED`.
 

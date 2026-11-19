@@ -116,7 +116,7 @@ def test_pick_succeeds_and_reaches_the_right_spot(mode):
     assert out["result"] == StretchControl.SUCCESS, out
     assert out["attempts"] == 1
     assert io.j["wrist_extension"] == 0.0        # retracted (out of the camera's view)
-    assert io.moves("gripper_aperture")[0] == pytest.approx(CAN_W + C.GRASP_WIDTH_MARGIN)
+    assert io.moves("gripper_aperture")[0] == pytest.approx(C.GRIPPER["open"])   # fully open
     assert not io.moves("rotate_mobile_base")    # navigation owns the approach
 
 
@@ -142,13 +142,13 @@ def test_lowering_uses_a_contact_threshold():
     assert lowered and lowered[0][2] == {"joint_lift": C.LIFT_CONTACT_EFFORT}
 
 
-def test_missed_grasp_retries_wider_then_gives_up():
+def test_missed_grasp_retries_then_gives_up():
     io = FakeIO(obj_base=None)                   # nothing there to grab
     out = StretchControl(io, grasp_mode="side").pick_object_at(CAN_FLOOR, 0.04, CAN_H, retries=2)
     assert out["result"] == StretchControl.GRASP_FAILED
     assert out["attempts"] == 3
-    opens = [a for a in io.moves("gripper_aperture") if 0 < a < C.GRIPPER["open"]]
-    assert opens == sorted(opens) and opens[-1] > opens[0]   # widened each time
+    opens = [a for a in io.moves("gripper_aperture") if a > 0]
+    assert opens and all(a == pytest.approx(C.GRIPPER["open"]) for a in opens)
 
 
 def test_rechecks_after_the_gripper_backs_off():

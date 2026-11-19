@@ -234,7 +234,7 @@ class StretchControl:
         Side grasp (standard gripper): open, lower to the grasp height, extend around
         the object, close. Top grasp (dex wrist): open, extend over it, lower until
         contact, close. Then check the grasp (finger position and effort), lift, check
-        again (catches slips), retract. On failure, open wider and retry.
+        again (catches slips), retract. On failure, retry.
 
         Returns {"result": <code>, "attempts": n, "reach": dict | None, "message": str}.
         """
@@ -260,8 +260,6 @@ class StretchControl:
             return {"result": self.NEEDS_REPOSITION, "attempts": 0, "reach": reach,
                     "message": reach["reason"]}
 
-        open_width = G.gripper_open_width(object_width, C.GRASP_WIDTH_MARGIN,
-                                          g["min_open"], g["max_open"])
         attempts = retries + 1
         for attempt in range(1, attempts + 1):
             plan = G.plan_reach(obj, self.grasp_center_in_base(), self.arm_extension(),
@@ -271,7 +269,9 @@ class StretchControl:
             if plan["clamped"]:
                 self._warn("pick: a joint limit was hit; the grasp may miss")
 
-            self.open_gripper(open_width)
+            # Fully open: gripper_aperture isn't metres on the real robot, so opening "to the
+            # object's width" left the fingers partway closed. They close until contact anyway.
+            self.open_gripper()
             if self.grasp_mode == "side":
                 # Lower beside the object (arm still in), then reach around it.
                 self.lower_lift_until_contact(plan["lift"])
@@ -299,7 +299,6 @@ class StretchControl:
             self._warn(f"pick: grasp attempt {attempt} failed")
             self.open_gripper()
             self.retract_arm()   # back out before the next try (side grasp must re-lower beside it)
-            open_width = min(open_width + 0.01, g["max_open"])   # misses are often too narrow
 
         return {"result": self.GRASP_FAILED, "attempts": attempts, "reach": reach,
                 "message": "grasp failed on every attempt"}

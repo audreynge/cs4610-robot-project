@@ -2,7 +2,8 @@
 
 Target from perception (or its ground-truth stub in sim): points the head at the floor
 on the arm side (-p head_pan:=, -p head_tilt:= in rad), waits up to detect_timeout s for
-a CONFIRMED object from litter/detect, and picks the nearest.
+a CONFIRMED object from litter/detect, and picks the nearest. With align_base it first
+drives up to it and re-measures it up close with litter/refine.
 
     ros2 run clean_sweep_manipulation demo_pick --ros-args -p source:=perception
 
@@ -60,6 +61,29 @@ def _nearest_confirmed(robot, timeout_s=60.0):
     return min(objs, key=dist)
 
 
+def _approach_and_refine(robot, litter):
+    """Drive up beside the object, then re-measure it from there with litter/refine.
+
+    The far-away estimate only sees the object's front face, so it's often off-center.
+    Returns the refined LitterObject, or the original if refine isn't available or fails.
+    """
+    from clean_sweep_interfaces.srv import RefineLitter
+
+    p = litter.position.point
+    robot.position_mode()
+    robot.align_base_to_object(robot.to_base_frame((p.x, p.y, p.z), litter.position.header.frame_id))
+    client = robot.node.create_client(RefineLitter, "litter/refine")
+    if not client.wait_for_service(timeout_sec=5.0):
+        print("litter/refine not available (sim stub?): using the far-away estimate")
+        return litter
+    res = _wait(client.call_async(RefineLitter.Request(id=litter.id)), 30.0)
+    if res is None or not res.success:
+        print(f"refine failed ({res.message if res else 'timed out'}): using the far-away estimate")
+        return litter
+    print(f"refined: {res.message}")
+    return res.object
+
+
 def main():
     robot = make_robot("clean_sweep_demo_pick")
     node = robot.node
@@ -73,7 +97,9 @@ def main():
         litter = _nearest_confirmed(robot, float(_param(node, "detect_timeout", 60.0)))
         print(f"Target: id={litter.id} {litter.label} width={litter.width:.3f} "
               f"height={litter.height:.3f} in {litter.position.header.frame_id}")
-        out = robot.pick_litter(litter, align_base=align)
+        if align:
+            litter = _approach_and_refine(robot, litter)
+        out = robot.pick_litter(litter, align_base=align)   # small re-align to the refined spot
     else:
         frame = _param(node, "frame", "base_link")
         point = (float(_param(node, "x", 0.0)), float(_param(node, "y", -0.55)),

@@ -67,7 +67,6 @@ else:
 GRASP_HEIGHT_FRACTION = 0.5
 GRASP_MIN_HEIGHT = 0.015    # m above the floor, CALIBRATE
 GRASP_Z_OFFSET = 0.0        # extra height on top of the above (m), CALIBRATE
-GRASP_WIDTH_MARGIN = 0.02   # open this much wider than the object (m)
 REACH_X_TOLERANCE = 0.03    # object may be this far ahead/behind the arm line (m)
 MIN_SIDE_DISTANCE = 0.0     # object must be at least this far out from the retracted gripper (m)
 GRASP_SETTLE_S = 0.5        # wait after closing/opening before checking (s)

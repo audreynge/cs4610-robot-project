@@ -35,7 +35,7 @@ robot = StretchControl(io)
 | Code | Meaning | What the state machine does |
 |---|---|---|
 | `SUCCESS` | Object held, arm retracted (out of the camera's view) | `litter/verify_pickup`, then deliver |
-| `GRASP_FAILED` | Failed 1 + 2 retries (opens wider each time) | `litter/set_state FAILED`, next object |
+| `GRASP_FAILED` | Failed 1 + 2 retries | `litter/set_state FAILED`, next object |
 | `NEEDS_REPOSITION` | Not beside the arm or out of reach; `result["reach"]["dx"]` = drive forward this much (m) | Navigation adjusts, then `refine` + pick again |
 | `TOO_LARGE` | Wider than the gripper opens (about 9 cm). No motion. | `set_state FAILED`, next object |
 | `ERROR` | e.g. no TF from the object's frame (is `map` running?); see `result["message"]` | Retry or skip |
@@ -57,11 +57,11 @@ Until navigation's final approach exists, picks can align the base themselves:
 2. Position mode; travel pose (arm in, lift up, gripper straight out, or down on a dex wrist).
 3. Aim point: the object's floor center, raised to half its height (`GRASP_HEIGHT_FRACTION`).
 4. Not beside the arm or out of reach? Return `NEEDS_REPOSITION`.
-5. Open to width + 2 cm.
+5. Open fully (`gripper_aperture` isn't metres on the real robot).
 6. **Side grasp (standard gripper):** lower beside the object (stops on contact), then extend around it.
    **Top grasp (dex wrist):** extend over it, then lower onto it.
 7. Close, check the grasp, lift, check again (catches slips). Held: retract, `SUCCESS`.
-8. Missed: open, retract, open 1 cm wider, retry.
+8. Missed: open, retract, retry.
 
 ## Running
 

@@ -69,8 +69,6 @@ def test_plan_reach_clamps():
 
 
 def test_gripper_width_and_holding():
-    assert close(g.gripper_open_width(0.05, 0.02, 0.03, 0.09), 0.07)
-    assert close(g.gripper_open_width(0.20, 0.02, 0.03, 0.09), 0.09)
     assert g.is_holding_object(0.10, empty_closed_pos=-0.05, tolerance=0.05)
     assert not g.is_holding_object(-0.04, empty_closed_pos=-0.05, tolerance=0.05)
     # Effort check: position looks held but motor isn't pushing -> not holding.
