@@ -133,7 +133,9 @@ run_manipulation() {
       ros2 launch clean_sweep_perception perception.launch.py ${PERCEPTION_ARGS:-output_frame:=odom}
     args=(-p source:=perception)
 
-    if [ "${CLEAN_SWEEP_DEX_WRIST:-0}" = 1 ]; then
+    if [ "${CLEAN_SWEEP_DEX_WRIST:-0}" = 1 ] && ! lsusb -d 8086:0b5b >/dev/null 2>&1; then
+      echo "== no D405 wrist camera on USB: skipping the wrist camera checks"
+    elif [ "${CLEAN_SWEEP_DEX_WRIST:-0}" = 1 ]; then
       # Second detector on the wrist camera, in base_link: the top grasp centers with it
       # and checks the object left the floor. No classifier: the label isn't needed there.
       start_camera wrist_camera "$WRIST_COLOR" d405_basic.launch.py
