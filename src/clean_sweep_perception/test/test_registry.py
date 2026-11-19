@@ -125,3 +125,12 @@ def test_refine_ignores_detections_of_a_neighbouring_object():
     assert registry.refine(1, seen, radius=0.25, since=5, now=6) == 1
     np.testing.assert_allclose(registry.get(1).position[:2], [1.02, 0.0])
     assert registry.get(2) is not None
+
+
+def test_refine_uses_close_ups_even_when_a_stale_duplicate_is_nearer_to_them():
+    """Regression (robot): a duplicate tracked near the real position vetoed every close-up."""
+    registry = LitterRegistry(RegistryParams(match_radius=0.15, confirm_sightings=1))
+    registry.update([obs(1.0, 0.0), obs(1.12, 0.0)], now=0)   # target 1, duplicate 2
+    close_up = [obs(1.1, 0.0), obs(1.11, 0.01)]
+    assert registry.refine(1, close_up, radius=0.25, since=5, now=6) == 2
+    assert registry.get(1).position[0] == pytest.approx(1.105)

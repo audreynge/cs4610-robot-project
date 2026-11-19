@@ -130,25 +130,27 @@ class LitterRegistry:
                since: float, now: float) -> int:
         """Re-estimate an object from close-range observations made since `since`.
 
-        Uses observations within `radius` that aren't closer to another object that
-        already existed, restarts the estimate from them, and absorbs objects created
+        The head is pointed at this object, so the observation within `radius` nearest its
+        estimate is it, along with the others within match_radius of that one (the same object
+        in other frames). Restarts the estimate from them, and absorbs objects created
         since `since` around the new position (the far estimate was off, so the close
         detections spawned duplicates meanwhile). Returns how many observations were used.
         """
         obj = self._objects.get(object_id)
         if obj is None:
             return 0
-        neighbours = [o for o in self._objects.values()
-                      if o.id != object_id and o.state != State.PICKED and o.first_seen < since]
 
-        def distance(o: TrackedObject, obs: Observation) -> float:
-            return float(np.linalg.norm(o.position[:2] - obs.position[:2]))
+        def apart(a: np.ndarray, b: np.ndarray) -> float:
+            return float(np.linalg.norm(a[:2] - b[:2]))
 
-        used = [obs for obs in observations
-                if distance(obj, obs) <= radius
-                and all(distance(n, obs) > distance(obj, obs) for n in neighbours)]
-        if not used:
+        # Not "skip it if it's closer to another tracked object": a stale duplicate of this
+        # object (from detections while the base drove) then vetoed every close-up detection.
+        in_range = [o for o in observations if apart(obj.position, o.position) <= radius]
+        if not in_range:
             return 0
+        anchor = min(in_range, key=lambda o: apart(obj.position, o.position))
+        used = [o for o in in_range
+                if apart(anchor.position, o.position) <= self._params.match_radius]
         obj.weight = 0.0
         obj.depth_valid = False
         for obs in used:
