@@ -190,7 +190,7 @@ class StretchControl:
         self.io.sleep(C.WRIST_SETTLE_S)
         seen = self.io.wrist_detections(C.WRIST_WAIT_S)
         if seen is None:
-            self._info("wrist camera: no detections, keeping the head camera's estimate")
+            self._info("wrist camera: not running (no images), keeping the head camera's estimate")
             return obj
         match = G.nearest_xy(seen, obj[:2], C.WRIST_MATCH_RADIUS)
         if match is None:

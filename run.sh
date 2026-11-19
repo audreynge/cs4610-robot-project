@@ -99,8 +99,9 @@ start_camera() {
   tail -n 20 "$log" >&2
 }
 
-# Stretch 3 gripper camera (D405): topics as stretch_core's d405_basic launch names them.
-WRIST_COLOR=/gripper_camera/color/image_rect_raw
+# Stretch 3 gripper camera (D405), started by stretch_core's d405_basic launch (camera name
+# gripper_camera). Its color topic name varies with the realsense-ros version: see below.
+WRIST_COLORS="/gripper_camera/color/image_rect_raw /gripper_camera/color/image_raw"
 WRIST_DEPTH=/gripper_camera/aligned_depth_to_color/image_raw
 WRIST_INFO=/gripper_camera/color/camera_info
 
@@ -133,19 +134,25 @@ run_manipulation() {
       ros2 launch clean_sweep_perception perception.launch.py ${PERCEPTION_ARGS:-output_frame:=odom}
     args=(-p source:=perception)
 
-    if [ "${CLEAN_SWEEP_DEX_WRIST:-0}" = 1 ] && ! lsusb -d 8086:0b5b >/dev/null 2>&1; then
-      echo "== no D405 wrist camera on USB: skipping the wrist camera checks"
-    elif [ "${CLEAN_SWEEP_DEX_WRIST:-0}" = 1 ]; then
+    if [ "${CLEAN_SWEEP_DEX_WRIST:-0}" = 1 ]; then
       # Second detector on the wrist camera, in base_link: the top grasp centers with it
       # and checks the object left the floor. No classifier: the label isn't needed there.
-      start_camera wrist_camera "$WRIST_COLOR" d405_basic.launch.py
-      local models
-      models=$(ros2 pkg prefix clean_sweep_perception)/share/clean_sweep_perception/models
-      start_unless_running wrist/litter_detector wrist_detector \
-        ros2 run clean_sweep_perception litter_detector --ros-args -r __ns:=/wrist \
-          -p color_topic:="$WRIST_COLOR" -p depth_topic:="$WRIST_DEPTH" -p info_topic:="$WRIST_INFO" \
-          -p output_frame:=base_link -p image_rotation:=none \
-          -p detector_model:="$models/detector_int8_openvino_model"
+      start_camera wrist_camera "$WRIST_INFO" d405_basic.launch.py
+      local color="" topic
+      for topic in $WRIST_COLORS; do
+        topic_exists "$topic" && { color=$topic; break; }
+      done
+      if [ -z "$color" ]; then
+        echo "== wrist camera isn't publishing images: skipping the wrist camera checks"
+      else
+        local models
+        models=$(ros2 pkg prefix clean_sweep_perception)/share/clean_sweep_perception/models
+        start_unless_running wrist/litter_detector wrist_detector \
+          ros2 run clean_sweep_perception litter_detector --ros-args -r __ns:=/wrist \
+            -p color_topic:="$color" -p depth_topic:="$WRIST_DEPTH" -p info_topic:="$WRIST_INFO" \
+            -p output_frame:=base_link -p image_rotation:=none \
+            -p detector_model:="$models/detector_int8_openvino_model"
+      fi
     fi
   fi
 
