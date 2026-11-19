@@ -74,7 +74,8 @@ MIN_SIDE_DISTANCE = 0.0     # object must be at least this far out from the retr
 # in base_link. Top grasps use it to center over the object before lowering, and after lifting
 # to check the object isn't still on the floor. No messages on the topic -> both are skipped.
 WRIST_DETECTIONS_TOPIC = "/wrist/litter/detections"
-WRIST_WAIT_S = 3.0            # wait this long for a detection from after the arm stopped (s)
+WRIST_SETTLE_S = 1.0          # after the arm stops, let it stop shaking before looking (s)
+WRIST_WAIT_S = 3.0            # then wait this long for a detection from a fresh image (s)
 WRIST_MATCH_RADIUS = 0.10     # a wrist detection this close to the aim point (xy, m) is the object
 WRIST_CENTER_TOLERANCE = 0.01  # don't bother correcting smaller offsets (m)
 WRIST_LEFT_BEHIND_MARGIN = 0.05  # seen no taller than the object + this: still on the floor (m)
@@ -90,7 +91,7 @@ GRIPPER_BY_PLATFORM = {
     # Measured on the Stretch 3 (2026-11-18). gripper_aperture is NOT a real width: the driver
     # maps it linearly onto the motor, and 0.09 only opens the fingers partway.
     "real": {
-        "open": 0.15,                # gripper_aperture for open; the driver stops at its own limit
+        "open": 0.30,                # gripper_aperture for open; the driver stops at its own limit
         "closed": -0.03,             # below 0 = keep squeezing
         "min_open": 0.03,
         "max_open": 0.15,

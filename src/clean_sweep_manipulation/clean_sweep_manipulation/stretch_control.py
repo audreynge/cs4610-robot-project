@@ -187,6 +187,7 @@ class StretchControl:
         Returns the aim point to use from now on (unchanged if the camera isn't running or
         doesn't see the object there).
         """
+        self.io.sleep(C.WRIST_SETTLE_S)
         seen = self.io.wrist_detections(C.WRIST_WAIT_S)
         if seen is None:
             self._info("wrist camera: no detections, keeping the head camera's estimate")
@@ -224,6 +225,7 @@ class StretchControl:
 
         A held object is up by the camera, so it measures much taller than it did on the floor.
         """
+        self.io.sleep(C.WRIST_SETTLE_S)
         match = G.nearest_xy(self.io.wrist_detections(C.WRIST_WAIT_S) or [], obj[:2],
                              C.WRIST_MATCH_RADIUS)
         if match is None:
