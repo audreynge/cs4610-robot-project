@@ -208,13 +208,17 @@ class StretchControl:
         self.set_arm(plan["arm_ext"])
         return obj
 
-    def left_on_floor(self, obj, object_height):
-        """After lifting: does the wrist camera still see the object on the floor at obj?
-        False when it can't tell (camera not running), so it never blocks a pick on its own."""
-        seen = self.io.wrist_detections(C.WRIST_WAIT_S)
-        match = G.nearest_xy(seen or [], obj[:2], C.WRIST_MATCH_RADIUS)
-        # A held object is up by the camera, so it measures much taller than the object.
-        return match is not None and match[3] <= object_height + C.WRIST_LEFT_BEHIND_MARGIN
+    def wrist_sees_it_held(self, obj, object_height):
+        """After lifting: True if the wrist camera sees the object up in the gripper, False if
+        it's still on the floor at obj, None if it can't tell (not seen, or camera not running).
+
+        A held object is up by the camera, so it measures much taller than it did on the floor.
+        """
+        match = G.nearest_xy(self.io.wrist_detections(C.WRIST_WAIT_S) or [], obj[:2],
+                             C.WRIST_MATCH_RADIUS)
+        if match is None:
+            return None
+        return match[3] > object_height + C.WRIST_LEFT_BEHIND_MARGIN
 
     def align_base_to_object(self, obj_base):
         """Turn and drive so the object is beside the arm; returns its new base_link point.
@@ -329,10 +333,13 @@ class StretchControl:
             if holding:
                 self.close_gripper()
                 self.io.sleep(C.GRASP_SETTLE_S)
-            if holding and self.grasp_mode == "top" and self.left_on_floor(obj, object_height):
+            wrist = self.wrist_sees_it_held(obj, object_height) if self.grasp_mode == "top" else None
+            if wrist is False:
                 self._warn("wrist camera: the object is still on the floor")
-                holding = False
-            if holding and self.is_holding():
+            elif wrist:
+                # Soft things (paper) barely load the fingers, so trust the camera over effort.
+                self._info("wrist camera: the object is in the gripper")
+            if wrist or (wrist is None and holding and self.is_holding()):
                 self.retract_arm()
                 return {"result": self.SUCCESS, "attempts": attempt, "reach": reach, "message": ""}
 

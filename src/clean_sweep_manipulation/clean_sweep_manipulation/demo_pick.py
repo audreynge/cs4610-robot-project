@@ -3,7 +3,8 @@
 Target from perception (or its ground-truth stub in sim): points the head at the floor
 on the arm side (-p head_pan:=, -p head_tilt:= in rad), waits up to detect_timeout s for
 a CONFIRMED object from litter/detect, and picks the nearest. With align_base it first
-drives up to it and re-measures it up close with litter/refine.
+drives up to it and re-measures it up close with litter/refine, and does that again
+before each retry (-p attempts:=, default 3), since a miss can push the object.
 
     ros2 run clean_sweep_manipulation demo_pick --ros-args -p source:=perception
 
@@ -21,6 +22,7 @@ where it started; pass -p return_to_start:=false to stay put.
 import math
 import time
 
+from clean_sweep_manipulation import config as C
 from clean_sweep_manipulation.robot_io import _wait, make_robot
 
 
@@ -97,9 +99,17 @@ def main():
         litter = _nearest_confirmed(robot, float(_param(node, "detect_timeout", 60.0)))
         print(f"Target: id={litter.id} {litter.label} width={litter.width:.3f} "
               f"height={litter.height:.3f} in {litter.position.header.frame_id}")
-        if align:
-            litter = _approach_and_refine(robot, litter)
-        out = robot.pick_litter(litter, align_base=align)   # small re-align to the refined spot
+        # A missed grasp often pushes the object (paper especially), so each try re-measures
+        # it and lines up again instead of grabbing at the old spot.
+        tries = int(_param(node, "attempts", C.DEFAULT_RETRIES + 1))
+        for attempt in range(1, tries + 1):
+            if align:
+                litter = _approach_and_refine(robot, litter)
+            out = robot.pick_litter(litter, retries=0, align_base=align)  # small re-align
+            out["attempts"] = attempt
+            if out["result"] != robot.GRASP_FAILED or attempt == tries:
+                break
+            print(f"attempt {attempt}/{tries} missed: re-measuring the object (it may have moved)")
     else:
         frame = _param(node, "frame", "base_link")
         point = (float(_param(node, "x", 0.0)), float(_param(node, "y", -0.55)),

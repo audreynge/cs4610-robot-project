@@ -78,7 +78,11 @@ class RosStretchIO:
 
     def wrist_detections(self, timeout):
         """[(x, y, z, height)] in base_link seen by the wrist camera in an image taken after
-        this call, or None if none arrives within timeout (wrist detector not running)."""
+        this call, or None if none arrives within timeout (wrist detector not running).
+
+        Depth-measured detections only: the floor-plane fallback assumes the object is on the
+        floor, which is wrong for one held right in front of the camera.
+        """
         start = self._node.get_clock().now()
         deadline = time.time() + timeout
         while time.time() < deadline:
@@ -90,7 +94,7 @@ class RosStretchIO:
                                      f"expected {C.BASE_FRAME!r}: ignoring them")
                     return None
                 return [(o.position.point.x, o.position.point.y, o.position.point.z, o.height)
-                        for o in msg.objects]
+                        for o in msg.objects if o.depth_valid]
             time.sleep(0.05)
         return None
 

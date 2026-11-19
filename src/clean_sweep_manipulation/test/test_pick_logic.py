@@ -25,13 +25,15 @@ S45 = math.sin(math.pi / 4)
 
 
 class FakeIO:
-    def __init__(self, obj_base=None, slips=False, wrist_camera=False, false_hold=False):
+    def __init__(self, obj_base=None, slips=False, wrist_camera=False, false_hold=False,
+                 soft=False):
         self.j = {"joint_lift": 0.5, "wrist_extension": 0.0, "joint_gripper_finger_left": 0.0}
         self.eff = 0.0
         self.obj = obj_base          # (x, y, z) of the object's grasp point in base_link
         self.slips = slips
         self.wrist_camera = wrist_camera  # sees the object while it's on the floor
         self.false_hold = false_hold      # fingers read "holding" without the object
+        self.soft = soft                  # held, but barely loads the fingers (paper)
         self.held = False
         self.calls = []              # ("move", pose, efforts) | ("mode", name)
         # map frame pose in base_link: robot at (1, 2) in map, facing +90 deg.
@@ -64,7 +66,7 @@ class FakeIO:
                     self.held = near
                     near = near or self.false_hold
                     self.j["joint_gripper_finger_left"] = 0.12 if near else -0.05
-                    self.eff = -20.0 if near else -1.0
+                    self.eff = -20.0 if near and not self.soft else -1.0
                 else:
                     self.held = False
                     self.j["joint_gripper_finger_left"] = val
@@ -85,8 +87,11 @@ class FakeIO:
     def wrist_detections(self, timeout):
         if not self.wrist_camera:
             return None
-        if self.held or self.obj is None:
+        if self.obj is None:
             return []
+        if self.held:   # up in the gripper, right under the camera: measures tall
+            g = self.grasp_center()
+            return [(g[0], g[1], g[2], g[2] + CAN_H / 2)]
         return [(self.obj[0], self.obj[1], self.obj[2], CAN_H)]
 
     def switch_mode(self, name):
@@ -306,3 +311,14 @@ def test_wrist_camera_catches_a_grasp_that_left_the_object_behind():
     io = FakeIO(obj_base=(CAN_GRASP[0] + 0.04, *CAN_GRASP[1:]), false_hold=True)
     out = StretchControl(io, grasp_mode="top").pick_object_at(CAN_FLOOR, CAN_W, CAN_H, retries=0)
     assert out["result"] == StretchControl.SUCCESS
+
+
+def test_wrist_camera_confirms_a_soft_grasp_the_fingers_barely_feel():
+    # Paper: held, but the squeeze effort looks like an empty gripper.
+    io = FakeIO(obj_base=CAN_GRASP, wrist_camera=True, soft=True)
+    out = StretchControl(io, grasp_mode="top").pick_object_at(CAN_FLOOR, CAN_W, CAN_H, retries=0)
+    assert out["result"] == StretchControl.SUCCESS, out
+    # Without the camera, effort alone calls it a miss.
+    io = FakeIO(obj_base=CAN_GRASP, soft=True)
+    out = StretchControl(io, grasp_mode="top").pick_object_at(CAN_FLOOR, CAN_W, CAN_H, retries=0)
+    assert out["result"] == StretchControl.GRASP_FAILED
