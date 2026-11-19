@@ -26,7 +26,7 @@ from rclpy.time import Time
 from sensor_msgs.msg import CameraInfo, Image
 
 from clean_sweep_perception.debug_view import draw_debug
-from clean_sweep_perception.geometry import CameraModel
+from clean_sweep_perception.geometry import CameraModel, LocalizerParams
 from clean_sweep_perception.models import DEFAULT_CONFIDENCE, YoloClassifier, YoloDetector
 from clean_sweep_perception.pipeline import LitterPerception
 from clean_sweep_perception.ros_conversions import image_to_numpy, transform_from_tf
@@ -44,6 +44,8 @@ PARAMETER_DEFAULTS = {
     "detector_classes": [""],  # e.g. ["bottle", "cup"] for a stock COCO model
     "classifier_model": "",
     "image_rotation": "cw90",  # how to turn the raw head image upright
+    "top_down": False,  # camera looks straight down (wrist camera): it can't see objects' bottoms
+    "min_depth": LocalizerParams.min_depth,  # m; ignore closer depth (D435i 0.2, D405 0.07)
     "max_rate": 3.0,  # Hz; the litter doesn't move, so spare the CPU
 }
 
@@ -58,7 +60,9 @@ class LitterDetectorNode(Node):
         detector = YoloDetector(p["detector_model"], p["detector_confidence"], p["detector_imgsz"],
                                 [c for c in p["detector_classes"] if c] or None)
         classifier = YoloClassifier(p["classifier_model"]) if p["classifier_model"] else None
-        self._perception = LitterPerception(detector, classifier, p["image_rotation"])
+        self._perception = LitterPerception(detector, classifier, p["image_rotation"],
+                                            localizer_params=LocalizerParams(min_depth=p["min_depth"]),
+                                            top_down=p["top_down"])
         self._base_frame = p["base_frame"]
         self._output_frame = p["output_frame"]
         self._min_period = 1.0 / p["max_rate"]

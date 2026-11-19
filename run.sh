@@ -150,7 +150,7 @@ run_manipulation() {
         start_unless_running wrist/litter_detector wrist_detector \
           ros2 run clean_sweep_perception litter_detector --ros-args -r __ns:=/wrist \
             -p color_topic:="$color" -p depth_topic:="$WRIST_DEPTH" -p info_topic:="$WRIST_INFO" \
-            -p output_frame:=base_link -p image_rotation:=none \
+            -p output_frame:=base_link -p image_rotation:=none -p top_down:=true -p min_depth:=0.07 \
             -p detector_model:="$models/detector_int8_openvino_model"
       fi
     fi

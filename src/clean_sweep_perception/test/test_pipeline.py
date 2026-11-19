@@ -1,8 +1,9 @@
 """End-to-end frame processing with stand-in models on the synthetic camera."""
 
 import numpy as np
+import pytest
 
-from clean_sweep_perception.geometry import Box, Transform
+from clean_sweep_perception.geometry import Box, LocalizerParams, Transform
 from clean_sweep_perception.image_rotation import rotate_upright
 from clean_sweep_perception.pipeline import LitterPerception
 from synthetic_scene import CAMERA, HEIGHT, WIDTH, can_at, head_camera, project_box, render_depth
@@ -91,3 +92,33 @@ def test_upright_image_is_really_upright():
         detections[name] = detection.upright_box
     assert detections["near"].y1 > detections["far"].y1
     assert detections["left"].x2 < WIDTH and detections["left"].x1 < detections["near"].x1
+
+
+def wrist_camera(x, y, z) -> Transform:
+    """Gripper camera looking straight down from z, as on a top grasp."""
+    return Transform(head_camera(height=z, pitch_deg=89.9).rotation, np.array([x, y, z]))
+
+
+def test_top_down_camera_accepts_an_upright_bottle_and_finds_its_center():
+    """Regression (robot): from above only the top shows, so the on-floor check rejected it."""
+    pose = wrist_camera(0.0, -0.55, 0.5)
+    bottle = can_at(0.04, -0.52, size=0.07, height=0.17)
+    color, depth = raw_frame(pose, [bottle])
+    head_rules = LitterPerception(MaskDetector(), None, "none").process(color, depth, CAMERA, pose)
+    assert not head_rules.accepted and "not on the floor" in head_rules.rejected[0][1]
+
+    result = LitterPerception(MaskDetector(), None, "none", top_down=True).process(
+        color, depth, CAMERA, pose)
+    [(_, loc)] = result.accepted
+    np.testing.assert_allclose(loc.position[:2], [0.04, -0.52], atol=0.005)
+    assert loc.height == pytest.approx(0.17, abs=0.01)
+
+
+def test_top_down_camera_accepts_an_object_held_up_in_the_gripper():
+    pose = wrist_camera(0.0, -0.55, 0.6)
+    held = can_at(0.0, -0.55, base_z=0.33, size=0.07, height=0.17)   # top at 0.50 m
+    color, depth = raw_frame(pose, [held])
+    d405 = LocalizerParams(min_depth=0.07)   # it's 10 cm from the camera: D435i limits drop it
+    [(_, loc)] = LitterPerception(MaskDetector(), None, "none", localizer_params=d405,
+                                  top_down=True).process(color, depth, CAMERA, pose).accepted
+    assert loc.height > 0.4   # measures tall: the pick reads that as "in the gripper"

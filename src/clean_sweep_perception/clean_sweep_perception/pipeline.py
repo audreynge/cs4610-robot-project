@@ -44,13 +44,16 @@ class FrameResult:
 
 class LitterPerception:
     def __init__(self, detector: Detector, classifier: Classifier | None, rotation: str,
-                 crop_padding: float = 0.1, localizer_params: LocalizerParams = LocalizerParams()):
-        """`crop_padding` must match the classifier dataset build (--pad, default 0.1)."""
+                 crop_padding: float = 0.1, localizer_params: LocalizerParams = LocalizerParams(),
+                 top_down: bool = False):
+        """`crop_padding` must match the classifier dataset build (--pad, default 0.1).
+        `top_down`: the camera looks straight down (see checks.rejection_reason)."""
         self._detector = detector
         self._classifier = classifier
         self._rotation = rotation
         self._crop_padding = crop_padding
         self._localizer_params = localizer_params
+        self._top_down = top_down
 
     def process(self, color_bgr: np.ndarray, depth_m: np.ndarray, camera: CameraModel,
                 camera_to_base: Transform) -> FrameResult:
@@ -63,7 +66,7 @@ class LitterPerception:
                                     self._localizer_params)
             if localization is None:
                 rejected.append((detection, "cannot place on the floor"))
-            elif reason := rejection_reason(localization, label):
+            elif reason := rejection_reason(localization, label, self._top_down):
                 rejected.append((detection, reason))
             else:
                 accepted.append((detection, localization))
