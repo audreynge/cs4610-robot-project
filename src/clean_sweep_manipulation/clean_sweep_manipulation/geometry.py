@@ -55,6 +55,19 @@ def base_rotation_to_put_object_on_arm_side(obj_xy):
     return wrap_angle(math.atan2(y, x) + math.pi / 2.0)
 
 
+def approach_drive(obj_xy, grasp_y, min_side, max_side):
+    """How far to drive toward the object (after turning to face it) so that, once
+    turned onto the arm side, it lands mid-reach. 0.0 if it's already within reach.
+
+    Turning in place puts the object hypot(x, y) out on -y, i.e. `grasp_y + hypot`
+    beyond the grasp center (grasp_y is negative: the gripper sits on the arm side).
+    """
+    side = grasp_y + math.hypot(*obj_xy)
+    if min_side <= side <= max_side:
+        return 0.0
+    return side - (min_side + max_side) / 2.0
+
+
 def point_after_base_rotation(point, theta):
     """Where a fixed world point appears in base_link after the robot spins by theta.
 

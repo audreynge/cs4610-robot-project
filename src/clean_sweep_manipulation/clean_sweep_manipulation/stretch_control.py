@@ -172,9 +172,13 @@ class StretchControl:
     def check_object_reachable(self, obj_base):
         """Is the object beside the arm and within reach? (geometry.check_reach dict)"""
         grasp = self.grasp_center_in_base()
-        max_side = C.ARM_LIMITS[1] - self.arm_extension()
         return G.check_reach(obj_base, grasp, C.REACH_X_TOLERANCE,
-                             max_side_distance=max_side, min_side_distance=C.MIN_SIDE_DISTANCE)
+                             max_side_distance=self._max_side_reach(),
+                             min_side_distance=C.MIN_SIDE_DISTANCE)
+
+    def _max_side_reach(self):
+        """How much further out the gripper can still reach from where it is now (m)."""
+        return C.ARM_LIMITS[1] - self.arm_extension()
 
     def align_base_to_object(self, obj_base):
         """Turn and drive so the object is beside the arm; returns its new base_link point.
@@ -182,10 +186,21 @@ class StretchControl:
         NAVIGATION owns the final approach, so picks only call this with
         align_base=True (for testing manipulation on its own).
         """
-        theta = G.base_rotation_to_put_object_on_arm_side(obj_base[:2])
+        obj = obj_base
+        drive = G.approach_drive(obj[:2], self.grasp_center_in_base()[1],
+                                 C.MIN_SIDE_DISTANCE, self._max_side_reach())
+        if drive:
+            # Out of reach from here (too far, or too close): face it and drive first.
+            face = math.atan2(obj[1], obj[0])
+            self._info(f"align: facing the object ({math.degrees(face):.1f} deg), "
+                       f"driving {drive:.3f} m")
+            self.rotate_base(face)
+            obj = G.point_after_base_translation(G.point_after_base_rotation(obj, face), drive)
+            self.drive_base(drive)
+        theta = G.base_rotation_to_put_object_on_arm_side(obj[:2])
         self._info(f"align: rotating base {math.degrees(theta):.1f} deg")
         self.rotate_base(theta)
-        obj = G.point_after_base_rotation(obj_base, theta)
+        obj = G.point_after_base_rotation(obj, theta)
         dx = obj[0] - self.grasp_center_in_base()[0]
         if abs(dx) > 0.005:
             self.drive_base(dx)
@@ -240,7 +255,8 @@ class StretchControl:
 
         reach = self.check_object_reachable(obj)
         if not reach["ok"]:
-            self._warn(f"pick: cannot reach: {reach['reason']} (dx={reach['dx']:.3f})")
+            self._warn(f"pick: cannot reach: {reach['reason']} "
+                       f"(dx={reach['dx']:.3f}, side={reach['side_dist']:.3f})")
             return {"result": self.NEEDS_REPOSITION, "attempts": 0, "reach": reach,
                     "message": reach["reason"]}
 

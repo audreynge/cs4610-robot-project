@@ -97,3 +97,10 @@ def test_grasp_height():
     assert close(g.grasp_height(0.0, 0.12), 0.06)          # halfway up a can
     assert close(g.grasp_height(0.0, 0.01), 0.015)         # flat paper: min height
     assert close(g.grasp_height(0.02, 0.10, offset=0.01), 0.08)
+
+
+def test_approach_drive_only_when_out_of_reach():
+    # Grasp center 0.25 m out on the arm side, arm reaches 0.52 m further.
+    assert g.approach_drive((0.0, -0.6), -0.25, 0.0, 0.52) == 0.0         # in reach
+    assert close(g.approach_drive((1.0, 0.0), -0.25, 0.0, 0.52), 0.49)   # 0.75 out, aim 0.26
+    assert close(g.approach_drive((0.1, 0.0), -0.25, 0.0, 0.52), -0.41)  # behind the gripper

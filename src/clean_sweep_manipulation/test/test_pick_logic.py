@@ -16,6 +16,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from clean_sweep_manipulation import config as C  # noqa: E402
+from clean_sweep_manipulation import geometry as G  # noqa: E402
 from clean_sweep_manipulation.stretch_control import StretchControl  # noqa: E402
 
 GRASP_Y0 = 0.25
@@ -65,8 +66,12 @@ class FakeIO:
                     self.held = False
                     self.j["joint_gripper_finger_left"] = val
                     self.eff = 0.0
-            elif name in ("translate_mobile_base", "rotate_mobile_base"):
-                pass
+            elif name == "translate_mobile_base":
+                if self.obj is not None:
+                    self.obj = tuple(G.point_after_base_translation(self.obj, val))
+            elif name == "rotate_mobile_base":
+                if self.obj is not None:
+                    self.obj = tuple(G.point_after_base_rotation(self.obj, val))
             else:
                 self.j[name] = val
         if self.held and self.slips and pose.get("joint_lift") == C.SAFE_LIFT:
@@ -207,13 +212,23 @@ def test_pick_litter_without_tf_reports_error():
 
 
 def test_align_base_mode_turns_then_picks():
-    # Object 0.8 m straight ahead; manipulation turns +90 deg itself.
-    io = FakeIO(obj_base=None)
-    robot = StretchControl(io, grasp_mode="side")
-    out = robot.pick_object_at((0.8, 0.0, 0.0), CAN_W, CAN_H, align_base=True, retries=0)
-    assert io.moves("rotate_mobile_base")[0] == pytest.approx(math.pi / 2)
-    # After turning, the object is 0.8 m out on the arm side: beyond reach from 0.25 + 0.52.
-    assert out["result"] == StretchControl.NEEDS_REPOSITION
+    # Object 0.5 m out on the right, 0.2 m ahead: within reach after one turn, no drive.
+    io = FakeIO(obj_base=(0.2, -0.5, CAN_H / 2))
+    out = StretchControl(io, grasp_mode="side").pick_object_at(
+        (0.2, -0.5, 0.0), CAN_W, CAN_H, align_base=True, retries=0)
+    assert out["result"] == StretchControl.SUCCESS, out
+    assert len(io.moves("rotate_mobile_base")) == 1
+    assert not io.moves("translate_mobile_base")
+
+
+@pytest.mark.parametrize("floor_xy", [(0.8, 0.0), (0.3, -1.1), (-0.4, 0.9)])
+def test_align_base_mode_drives_closer_when_out_of_reach(floor_xy):
+    # Beyond 0.25 + 0.52 m after a turn alone: faces it, drives closer, turns, picks.
+    io = FakeIO(obj_base=(*floor_xy, CAN_H / 2))
+    out = StretchControl(io, grasp_mode="side").pick_object_at(
+        (*floor_xy, 0.0), CAN_W, CAN_H, align_base=True, retries=0)
+    assert out["result"] == StretchControl.SUCCESS, out
+    assert io.moves("translate_mobile_base")[0] > 0
 
 
 def test_drop_confirms_release_with_a_closed_gripper():
