@@ -247,6 +247,29 @@ class StretchControl:
             obj = G.point_after_base_translation(obj, dx)
         return tuple(obj)
 
+    def approach(self, obj_base, measure, rounds=2):
+        """Line up beside the object, then re-measure it from where the robot actually ended up
+        and correct until it's reachable without moving the base again.
+
+        Wheels slip (on carpet especially), so a position measured before a base move is off
+        after it. measure() returns the object's current base_link point, or None if it can't.
+        Returns (last known point, True if reachable from here with the arm alone).
+        """
+        self.align_base_to_object(obj_base)
+        for _ in range(rounds):
+            seen = measure()
+            if seen is None:
+                return obj_base, False
+            obj_base = tuple(seen)
+            reach = self.check_object_reachable(obj_base)
+            self._info(f"approach: measured at ({obj_base[0]:.3f}, {obj_base[1]:.3f}) in base_link, "
+                       f"dx={reach['dx']:.3f} side={reach['side_dist']:.3f}: "
+                       f"{reach['reason'] or 'in reach'}")
+            if reach["ok"]:
+                return obj_base, True
+            self.align_base_to_object(obj_base)
+        return obj_base, False
+
     def pick_litter(self, litter, retries=C.DEFAULT_RETRIES, align_base=False):
         """Pick a clean_sweep_interfaces/LitterObject (use the one litter/refine returns).
 
@@ -327,6 +350,9 @@ class StretchControl:
             # fingers keep holding), so a reading before the lift, or without the second
             # squeeze, can look empty while holding. Checking before the lift too made the
             # pick drop objects it had lifted fine.
+            g_now = self.grasp_center_in_base()
+            self._info("pick: closing with the gripper at ({:.3f}, {:.3f}, {:.3f}), aim ({:.3f}, "
+                       "{:.3f}, {:.3f}) in base_link".format(*g_now, *obj))
             self.close_gripper()
             self.io.sleep(C.GRASP_SETTLE_S)
             self.set_lift(C.SAFE_LIFT)

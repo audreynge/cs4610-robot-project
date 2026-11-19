@@ -49,7 +49,10 @@ the grasp center with the arm retracted; add up to 0.52 m of reach. For the bin,
 park with the bin on the arm side too.
 
 Until navigation's final approach exists, picks can align the base themselves:
-`pick_litter(litter, align_base=True)`.
+`pick_litter(litter, align_base=True)`. That moves blind, and wheels slip (on carpet especially),
+so prefer `approach(point, measure)`: it lines up, re-measures after every base move (pass a
+function that calls `litter/refine`; see `demo_pick`), and says whether the arm alone can reach.
+Then pick with `align_base=False`.
 
 ## How a pick works
 

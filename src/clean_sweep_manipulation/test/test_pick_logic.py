@@ -26,7 +26,7 @@ S45 = math.sin(math.pi / 4)
 
 class FakeIO:
     def __init__(self, obj_base=None, slips=False, wrist_camera=False, false_hold=False,
-                 soft=False):
+                 soft=False, wheel_slip=0.0):
         self.j = {"joint_lift": 0.5, "wrist_extension": 0.0, "joint_gripper_finger_left": 0.0}
         self.eff = 0.0
         self.obj = obj_base          # (x, y, z) of the object's grasp point in base_link
@@ -34,6 +34,7 @@ class FakeIO:
         self.wrist_camera = wrist_camera  # sees the object while it's on the floor
         self.false_hold = false_hold      # fingers read "holding" without the object
         self.soft = soft                  # held, but barely loads the fingers (paper)
+        self.wheel_slip = wheel_slip      # base moves fall short by this fraction (carpet)
         self.held = False
         self.calls = []              # ("move", pose, efforts) | ("mode", name)
         # map frame pose in base_link: robot at (1, 2) in map, facing +90 deg.
@@ -73,10 +74,11 @@ class FakeIO:
                     self.eff = 0.0
             elif name == "translate_mobile_base":
                 if self.obj is not None:
-                    self.obj = tuple(G.point_after_base_translation(self.obj, val))
+                    self.obj = tuple(G.point_after_base_translation(
+                        self.obj, val * (1 - self.wheel_slip)))
             elif name == "rotate_mobile_base":
                 if self.obj is not None:
-                    self.obj = tuple(G.point_after_base_rotation(self.obj, val))
+                    self.obj = tuple(G.point_after_base_rotation(self.obj, val * (1 - self.wheel_slip)))
             else:
                 self.j[name] = val
         if self.held and self.slips and pose.get("joint_lift") == C.SAFE_LIFT:
@@ -340,3 +342,28 @@ def test_wrist_camera_confirms_a_soft_grasp_the_fingers_barely_feel():
     io = FakeIO(obj_base=CAN_GRASP, soft=True)
     out = StretchControl(io, grasp_mode="top").pick_object_at(CAN_FLOOR, CAN_W, CAN_H, retries=0)
     assert out["result"] == StretchControl.GRASP_FAILED
+
+
+def test_approach_remeasures_after_wheel_slip():
+    # Base moves fall 10% short. Lining up blind misses; re-measuring after each move
+    # (what litter/refine does on the robot) gets it, and the grasp needs no base move.
+    floor = (0.8, -0.3, 0.0)
+    io = FakeIO(obj_base=(*floor[:2], CAN_H / 2), wheel_slip=0.1)
+    out = StretchControl(io, grasp_mode="top").pick_object_at(floor, CAN_W, CAN_H,
+                                                              align_base=True, retries=0)
+    assert out["result"] != StretchControl.SUCCESS
+
+    io = FakeIO(obj_base=(*floor[:2], CAN_H / 2), wheel_slip=0.1)
+    robot = StretchControl(io, grasp_mode="top")
+    point, settled = robot.approach(floor, measure=lambda: (io.obj[0], io.obj[1], 0.0))
+    assert settled
+    moves = len(io.moves("rotate_mobile_base") + io.moves("translate_mobile_base"))
+    out = robot.pick_object_at(point, CAN_W, CAN_H, retries=0)
+    assert out["result"] == StretchControl.SUCCESS, out
+    assert len(io.moves("rotate_mobile_base") + io.moves("translate_mobile_base")) == moves
+
+
+def test_approach_without_a_measurement_says_not_settled():
+    io = FakeIO(obj_base=(0.8, 0.0, CAN_H / 2))
+    _, settled = StretchControl(io).approach((0.8, 0.0, 0.0), measure=lambda: None)
+    assert not settled
