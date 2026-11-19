@@ -58,8 +58,8 @@ Then pick with `align_base=False`.
 
 1. Too wide for the gripper? Return `TOO_LARGE` without moving.
 2. Position mode; travel pose (arm in, lift up, gripper straight out, or down on a dex wrist).
-3. Aim point: the object's floor point (perception's center, minus half its height), raised to 30%
-   of its height (`GRASP_HEIGHT_FRACTION`): low, so pushing it while closing doesn't tip it over.
+3. Aim point: the object's floor point (perception's center, minus half its height), raised to half
+   its height (`GRASP_HEIGHT_FRACTION`).
 4. Not beside the arm or out of reach? Return `NEEDS_REPOSITION`.
 5. Open fully (`gripper_aperture` isn't metres on the real robot).
 6. **Side grasp (standard gripper):** lower beside the object (stops on contact), then extend around it.

@@ -63,8 +63,9 @@ else:
 # ------------------------------------------------------------- grasping
 # Where on the object the grasp center aims, measured up from the floor point
 # object's floor point: this fraction of the object's height, but never below GRASP_MIN_HEIGHT.
-# Low (0.3): closing pushes an off-center object, and pushed high a tall bottle tips over.
-GRASP_HEIGHT_FRACTION = 0.3
+# 0.5 grabbed bottles on the robot; 0.3 put the fingertips into the carpet. Tipping on closing
+# is handled by re-centering just above the object (PRE_GRASP_CLEARANCE), not by grabbing low.
+GRASP_HEIGHT_FRACTION = 0.5
 GRASP_MIN_HEIGHT = 0.015    # m above the floor, CALIBRATE
 PRE_GRASP_CLEARANCE = 0.05  # top grasp: stop this far above the object's top to re-center (m)
 GRASP_Z_OFFSET = 0.0        # extra height on top of the above (m), CALIBRATE
