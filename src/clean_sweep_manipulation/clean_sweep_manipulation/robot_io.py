@@ -39,6 +39,8 @@ from sensor_msgs.msg import JointState
 from std_srvs.srv import Trigger
 from trajectory_msgs.msg import JointTrajectoryPoint
 
+from clean_sweep_interfaces.msg import LitterObjectArray
+
 from clean_sweep_manipulation import config as C
 from clean_sweep_manipulation.stretch_control import StretchControl
 
@@ -58,6 +60,9 @@ class RosStretchIO:
                                  callback_group=callback_group)
         self._modes = {name: node.create_client(Trigger, srv, callback_group=callback_group)
                        for name, srv in C.MODE_SERVICES.items()}
+        self._wrist = None   # latest LitterObjectArray from the wrist camera's detector
+        node.create_subscription(LitterObjectArray, C.WRIST_DETECTIONS_TOPIC, self._on_wrist, 1,
+                                 callback_group=callback_group)
         self._stow = node.create_client(Trigger, C.STOW_SERVICE, callback_group=callback_group)
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, node)
@@ -66,6 +71,28 @@ class RosStretchIO:
     def _on_joints(self, msg: JointState):
         with self._lock:
             self._joint_state = msg
+
+    def _on_wrist(self, msg: LitterObjectArray):
+        with self._lock:
+            self._wrist = msg
+
+    def wrist_detections(self, timeout):
+        """[(x, y, z, height)] in base_link seen by the wrist camera in an image taken after
+        this call, or None if none arrives within timeout (wrist detector not running)."""
+        start = self._node.get_clock().now()
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            with self._lock:
+                msg = self._wrist
+            if msg is not None and Time.from_msg(msg.header.stamp) > start:
+                if msg.header.frame_id != C.BASE_FRAME:
+                    self.log("warn", f"wrist detections in {msg.header.frame_id!r}, "
+                                     f"expected {C.BASE_FRAME!r}: ignoring them")
+                    return None
+                return [(o.position.point.x, o.position.point.y, o.position.point.z, o.height)
+                        for o in msg.objects]
+            time.sleep(0.05)
+        return None
 
     def joint_names(self):
         with self._lock:

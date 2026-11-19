@@ -180,6 +180,42 @@ class StretchControl:
         """How much further out the gripper can still reach from where it is now (m)."""
         return C.ARM_LIMITS[1] - self.arm_extension()
 
+    # ------------------------------------------------------- wrist camera
+    def center_over_object(self, obj):
+        """Top grasp, gripper out over the object: re-aim at where the wrist camera sees it.
+
+        Returns the aim point to use from now on (unchanged if the camera isn't running or
+        doesn't see the object there).
+        """
+        seen = self.io.wrist_detections(C.WRIST_WAIT_S)
+        if seen is None:
+            self._info("wrist camera: no detections, keeping the head camera's estimate")
+            return obj
+        match = G.nearest_xy(seen, obj[:2], C.WRIST_MATCH_RADIUS)
+        if match is None:
+            self._warn("wrist camera: object not seen under the gripper, keeping the estimate")
+            return obj
+        offset = math.dist(match[:2], obj[:2])
+        if offset < C.WRIST_CENTER_TOLERANCE:
+            return obj
+        self._info(f"wrist camera: re-centering by {offset * 100:.1f} cm")
+        obj = (match[0], match[1], obj[2])
+        plan = G.plan_reach(obj, self.grasp_center_in_base(), self.arm_extension(),
+                            self.lift_height(), arm_limits=C.ARM_LIMITS, lift_limits=C.LIFT_LIMITS)
+        if abs(plan["drive_x"]) > 0.005:
+            self.drive_base(plan["drive_x"])
+            obj = tuple(G.point_after_base_translation(obj, plan["drive_x"]))
+        self.set_arm(plan["arm_ext"])
+        return obj
+
+    def left_on_floor(self, obj, object_height):
+        """After lifting: does the wrist camera still see the object on the floor at obj?
+        False when it can't tell (camera not running), so it never blocks a pick on its own."""
+        seen = self.io.wrist_detections(C.WRIST_WAIT_S)
+        match = G.nearest_xy(seen or [], obj[:2], C.WRIST_MATCH_RADIUS)
+        # A held object is up by the camera, so it measures much taller than the object.
+        return match is not None and match[3] <= object_height + C.WRIST_LEFT_BEHIND_MARGIN
+
     def align_base_to_object(self, obj_base):
         """Turn and drive so the object is beside the arm; returns its new base_link point.
 
@@ -277,8 +313,9 @@ class StretchControl:
                 self.lower_lift_until_contact(plan["lift"])
                 self.set_arm(plan["arm_ext"])
             else:
-                # Reach over the object, then come down onto it.
+                # Reach over the object, line up with the wrist camera, then come down onto it.
                 self.set_arm(plan["arm_ext"])
+                obj = self.center_over_object(obj)
                 self.lower_lift_until_contact(plan["lift"])
 
             self.close_gripper()
@@ -292,6 +329,9 @@ class StretchControl:
             if holding:
                 self.close_gripper()
                 self.io.sleep(C.GRASP_SETTLE_S)
+            if holding and self.grasp_mode == "top" and self.left_on_floor(obj, object_height):
+                self._warn("wrist camera: the object is still on the floor")
+                holding = False
             if holding and self.is_holding():
                 self.retract_arm()
                 return {"result": self.SUCCESS, "attempts": attempt, "reach": reach, "message": ""}

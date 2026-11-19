@@ -59,8 +59,9 @@ Until navigation's final approach exists, picks can align the base themselves:
 4. Not beside the arm or out of reach? Return `NEEDS_REPOSITION`.
 5. Open fully (`gripper_aperture` isn't metres on the real robot).
 6. **Side grasp (standard gripper):** lower beside the object (stops on contact), then extend around it.
-   **Top grasp (dex wrist):** extend over it, then lower onto it.
-7. Close, check the grasp, lift, check again (catches slips). Held: retract, `SUCCESS`.
+   **Top grasp (dex wrist):** extend over it, re-center on where the wrist camera sees it, then lower onto it.
+7. Close, check the grasp, lift, check again (catches slips; on a top grasp, also fails if the wrist
+   camera still sees the object on the floor). Held: retract, `SUCCESS`.
 8. Missed: open, retract, retry.
 
 ## Running

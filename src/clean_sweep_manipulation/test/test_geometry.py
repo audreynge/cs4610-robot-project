@@ -102,3 +102,10 @@ def test_approach_drive_only_when_out_of_reach():
     assert g.approach_drive((0.0, -0.6), -0.25, 0.0, 0.52) == 0.0         # in reach
     assert close(g.approach_drive((1.0, 0.0), -0.25, 0.0, 0.52), 0.49)   # 0.75 out, aim 0.26
     assert close(g.approach_drive((0.1, 0.0), -0.25, 0.0, 0.52), -0.41)  # behind the gripper
+
+
+def test_nearest_xy():
+    pts = [(1.0, 0.0, 0.0, 0.1), (0.05, 0.02, 0.0, 0.1)]
+    assert g.nearest_xy(pts, (0.0, 0.0), 0.1) == pts[1]
+    assert g.nearest_xy(pts, (0.5, 0.5), 0.1) is None
+    assert g.nearest_xy([], (0.0, 0.0), 0.1) is None

@@ -69,6 +69,14 @@ GRASP_MIN_HEIGHT = 0.015    # m above the floor, CALIBRATE
 GRASP_Z_OFFSET = 0.0        # extra height on top of the above (m), CALIBRATE
 REACH_X_TOLERANCE = 0.03    # object may be this far ahead/behind the arm line (m)
 MIN_SIDE_DISTANCE = 0.0     # object must be at least this far out from the retracted gripper (m)
+# Wrist (gripper) camera, dex wrist only: run.sh runs a second litter_detector on it, publishing
+# in base_link. Top grasps use it to center over the object before lowering, and after lifting
+# to check the object isn't still on the floor. No messages on the topic -> both are skipped.
+WRIST_DETECTIONS_TOPIC = "/wrist/litter/detections"
+WRIST_WAIT_S = 3.0            # wait this long for a detection from after the arm stopped (s)
+WRIST_MATCH_RADIUS = 0.10     # a wrist detection this close to the aim point (xy, m) is the object
+WRIST_CENTER_TOLERANCE = 0.01  # don't bother correcting smaller offsets (m)
+WRIST_LEFT_BEHIND_MARGIN = 0.05  # seen no taller than the object + this: still on the floor (m)
 GRASP_SETTLE_S = 0.5        # wait after closing/opening before checking (s)
 LIFT_CONTACT_EFFORT = 60.0  # contact threshold when lowering (effort_pct). Must be above the
                             # lift's holding effort (37 measured on the Stretch 3), or it

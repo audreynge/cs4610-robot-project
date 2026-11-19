@@ -25,11 +25,13 @@ S45 = math.sin(math.pi / 4)
 
 
 class FakeIO:
-    def __init__(self, obj_base=None, slips=False):
+    def __init__(self, obj_base=None, slips=False, wrist_camera=False, false_hold=False):
         self.j = {"joint_lift": 0.5, "wrist_extension": 0.0, "joint_gripper_finger_left": 0.0}
         self.eff = 0.0
         self.obj = obj_base          # (x, y, z) of the object's grasp point in base_link
         self.slips = slips
+        self.wrist_camera = wrist_camera  # sees the object while it's on the floor
+        self.false_hold = false_hold      # fingers read "holding" without the object
         self.held = False
         self.calls = []              # ("move", pose, efforts) | ("mode", name)
         # map frame pose in base_link: robot at (1, 2) in map, facing +90 deg.
@@ -60,6 +62,7 @@ class FakeIO:
                     g = self.grasp_center()
                     near = self.held or (self.obj is not None and math.dist(g, self.obj) < 0.02)
                     self.held = near
+                    near = near or self.false_hold
                     self.j["joint_gripper_finger_left"] = 0.12 if near else -0.05
                     self.eff = -20.0 if near else -1.0
                 else:
@@ -78,6 +81,13 @@ class FakeIO:
             self.held = False
             self.j["joint_gripper_finger_left"], self.eff = -0.05, -1.0
         return True
+
+    def wrist_detections(self, timeout):
+        if not self.wrist_camera:
+            return None
+        if self.held or self.obj is None:
+            return []
+        return [(self.obj[0], self.obj[1], self.obj[2], CAN_H)]
 
     def switch_mode(self, name):
         self.calls.append(("mode", name))
@@ -274,3 +284,25 @@ def test_drop_detects_stuck_object():
         return r
     io.move = move
     assert robot.drop_in_bin() is False
+
+
+def test_wrist_camera_recenters_a_top_grasp():
+    # The head camera's estimate is 4 cm off: the grasp misses without the wrist camera.
+    actual = (CAN_GRASP[0] + 0.04, CAN_GRASP[1] - 0.03, CAN_GRASP[2])
+    for wrist, expected in ((False, StretchControl.GRASP_FAILED), (True, StretchControl.SUCCESS)):
+        io = FakeIO(obj_base=actual, wrist_camera=wrist)
+        out = StretchControl(io, grasp_mode="top").pick_object_at(CAN_FLOOR, CAN_W, CAN_H, retries=0)
+        assert out["result"] == expected, (wrist, out)
+
+
+def test_wrist_camera_catches_a_grasp_that_left_the_object_behind():
+    # The finger effort says "holding", but the wrist camera still sees it on the floor.
+    io = FakeIO(obj_base=(CAN_GRASP[0] + 0.04, *CAN_GRASP[1:]), wrist_camera=True, false_hold=True)
+    robot = StretchControl(io, grasp_mode="top")
+    robot.center_over_object = lambda obj: obj      # don't let it fix the aim
+    out = robot.pick_object_at(CAN_FLOOR, CAN_W, CAN_H, retries=0)
+    assert out["result"] == StretchControl.GRASP_FAILED, out
+    # Without the camera, the same false reading counts as a success.
+    io = FakeIO(obj_base=(CAN_GRASP[0] + 0.04, *CAN_GRASP[1:]), false_hold=True)
+    out = StretchControl(io, grasp_mode="top").pick_object_at(CAN_FLOOR, CAN_W, CAN_H, retries=0)
+    assert out["result"] == StretchControl.SUCCESS

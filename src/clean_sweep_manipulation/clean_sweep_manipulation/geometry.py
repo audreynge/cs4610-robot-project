@@ -124,6 +124,12 @@ def plan_reach(obj_base, grasp_center_base, current_arm_ext, current_lift,
     return {"drive_x": drive_x, "arm_ext": arm_c, "lift": lift_c, "clamped": clamped}
 
 
+def nearest_xy(points, xy, radius):
+    """The point (x, y, ...) nearest to xy in the floor plane, if within radius; else None."""
+    best = min(points, key=lambda p: math.dist(p[:2], xy), default=None)
+    return best if best is not None and math.dist(best[:2], xy) <= radius else None
+
+
 def is_holding_object(finger_pos_after_close, empty_closed_pos, tolerance,
                       finger_effort=None, min_effort=0.0):
     """Grasp check from finger position and effort.

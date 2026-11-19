@@ -61,6 +61,7 @@ stop_started() {
 trap stop_started EXIT
 
 node_running() { ros2 node list 2>/dev/null | grep -qx "/$1"; }
+topic_exists() { ros2 topic list 2>/dev/null | grep -qx "$1"; }
 
 # start_unless_running <node name> <log name> <command...>: start it in the background, stop it on exit.
 start_unless_running() {
@@ -81,6 +82,27 @@ start_unless_running() {
   tail -n 20 "$log" >&2
   exit 1
 }
+
+# start_camera <name> <image topic> <launch file>: launch a stretch_core camera unless its
+# image topic already exists. Only warns if it doesn't come up (perception then sees nothing).
+start_camera() {
+  local name=$1 topic=$2 launch=$3 log=/tmp/clean_sweep_$1.log
+  topic_exists "$topic" && return
+  echo "== starting the $name (log: $log)"
+  setsid ros2 launch stretch_core "$launch" > "$log" 2>&1 &
+  started_pids+=($!)
+  for _ in $(seq 1 30); do
+    topic_exists "$topic" && return
+    sleep 1
+  done
+  echo "WARNING: still no $topic after 30 s. End of $log:" >&2
+  tail -n 20 "$log" >&2
+}
+
+# Stretch 3 gripper camera (D405): topics as stretch_core's d405_basic launch names them.
+WRIST_COLOR=/gripper_camera/color/image_rect_raw
+WRIST_DEPTH=/gripper_camera/aligned_depth_to_color/image_raw
+WRIST_INFO=/gripper_camera/color/camera_info
 
 run_manipulation() {
   if ! command -v ros2 >/dev/null; then
@@ -105,24 +127,24 @@ run_manipulation() {
 
   if [ "$manip_mode" = pick ] && [ ${#args[@]} -eq 0 ]; then
     # No coordinates given: pick the nearest litter that perception has confirmed.
-    if ! ros2 topic list 2>/dev/null | grep -qx /camera/color/image_raw; then
-      local cam_log=/tmp/clean_sweep_camera.log
-      echo "== starting the head camera (log: $cam_log)"
-      setsid ros2 launch stretch_core d435i_high_resolution.launch.py > "$cam_log" 2>&1 &
-      started_pids+=($!)
-      for _ in $(seq 1 30); do
-        ros2 topic list 2>/dev/null | grep -qx /camera/color/image_raw && break
-        sleep 1
-      done
-      if ! ros2 topic list 2>/dev/null | grep -qx /camera/color/image_raw; then
-        echo "WARNING: still no /camera/color/image_raw after 30 s. End of $cam_log:" >&2
-        tail -n 20 "$cam_log" >&2
-      fi
-    fi
+    start_camera camera /camera/color/image_raw d435i_high_resolution.launch.py
     # No map on the robot: track litter in odom (survives the base turning to line up).
     start_unless_running litter_registry perception \
       ros2 launch clean_sweep_perception perception.launch.py ${PERCEPTION_ARGS:-output_frame:=odom}
     args=(-p source:=perception)
+
+    if [ "${CLEAN_SWEEP_DEX_WRIST:-0}" = 1 ]; then
+      # Second detector on the wrist camera, in base_link: the top grasp centers with it
+      # and checks the object left the floor. No classifier: the label isn't needed there.
+      start_camera wrist_camera "$WRIST_COLOR" d405_basic.launch.py
+      local models
+      models=$(ros2 pkg prefix clean_sweep_perception)/share/clean_sweep_perception/models
+      start_unless_running wrist/litter_detector wrist_detector \
+        ros2 run clean_sweep_perception litter_detector --ros-args -r __ns:=/wrist \
+          -p color_topic:="$WRIST_COLOR" -p depth_topic:="$WRIST_DEPTH" -p info_topic:="$WRIST_INFO" \
+          -p output_frame:=base_link -p image_rotation:=none \
+          -p detector_model:="$models/detector_int8_openvino_model"
+    fi
   fi
 
   echo "== manipulation: $script"

@@ -62,7 +62,8 @@ first; the RealSense launch must publish depth aligned to color. Then:
 Each run builds the workspace and starts `stretch_driver` in position mode if it isn't running.
 A pick without coordinates also starts perception (logs in `/tmp/clean_sweep_*.log`), and
 everything `run.sh` started is stopped when it exits. Options:
-- `CLEAN_SWEEP_DEX_WRIST=1` for a dex wrist.
+- `CLEAN_SWEEP_DEX_WRIST=1` for a dex wrist. This also starts the wrist (gripper) camera and a second
+  detector on it, which the grasp uses to center over the object and to check it left the floor.
 - `CLEAN_SWEEP_PLATFORM=sim` in simulation.
 - `PERCEPTION_ARGS="output_frame:=odom"` if no map is running.
 
