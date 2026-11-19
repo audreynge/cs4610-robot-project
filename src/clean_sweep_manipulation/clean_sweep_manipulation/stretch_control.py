@@ -232,6 +232,11 @@ class StretchControl:
             return None
         return match[3] > object_height + C.WRIST_LEFT_BEHIND_MARGIN
 
+    def _lift_for_grasp_z(self, z):
+        """Lift that puts the grasp center at height z, from where it is now (the gripper
+        rises as the arm extends, so a lift planned with the arm in comes out high)."""
+        return self.lift_height() + (z - self.grasp_center_in_base()[2])
+
     def align_base_to_object(self, obj_base):
         """Turn and drive so the object is beside the arm; returns its new base_link point.
 
@@ -358,10 +363,12 @@ class StretchControl:
                 self.set_arm(plan["arm_ext"])
                 obj = self.correct_reach(obj)
                 obj = self.center_over_object(obj)
-                # Height from where the gripper is now: it rises as the arm extends
-                # (1.5 cm at 0.47 m on the Stretch 3), so the plan made with the arm in is high.
-                lift = self.lift_height() + (obj[2] - self.grasp_center_in_base()[2])
-                self.lower_lift_until_contact(lift)
+                # Come down to just above the object and center again: from there the wrist
+                # camera is close and accurate, and off-center fingers push it over on closing.
+                top = floor_point_base[2] + object_height
+                self.lower_lift_until_contact(self._lift_for_grasp_z(top + C.PRE_GRASP_CLEARANCE))
+                obj = self.center_over_object(obj)
+                self.lower_lift_until_contact(self._lift_for_grasp_z(obj[2]))
 
             # Close, lift, squeeze again, then check once: a weak grasp slips while lifting.
             # The gripper's stall protection backs the motor off while it squeezes (the springy

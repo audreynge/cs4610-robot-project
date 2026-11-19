@@ -62,10 +62,11 @@ else:
 
 # ------------------------------------------------------------- grasping
 # Where on the object the grasp center aims, measured up from the floor point
-# perception reports (LitterObject.position is the object's center ON the floor):
-# this fraction of the object's height (0.5 = halfway up), but never below GRASP_MIN_HEIGHT.
-GRASP_HEIGHT_FRACTION = 0.5
+# object's floor point: this fraction of the object's height, but never below GRASP_MIN_HEIGHT.
+# Low (0.3): closing pushes an off-center object, and pushed high a tall bottle tips over.
+GRASP_HEIGHT_FRACTION = 0.3
 GRASP_MIN_HEIGHT = 0.015    # m above the floor, CALIBRATE
+PRE_GRASP_CLEARANCE = 0.05  # top grasp: stop this far above the object's top to re-center (m)
 GRASP_Z_OFFSET = 0.0        # extra height on top of the above (m), CALIBRATE
 REACH_CORRECTION_MIN = 0.005  # arm out: correct the gripper if it's further than this off (m)
 REACH_X_TOLERANCE = 0.03    # object may be this far ahead/behind the arm line (m)

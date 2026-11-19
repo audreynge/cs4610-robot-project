@@ -127,7 +127,8 @@ def calibrated(monkeypatch):
 
 CAN_FLOOR = (0.0, -0.55, 0.0)   # can's center on the floor, beside the arm
 CAN_W, CAN_H = 0.066, 0.12
-CAN_GRASP = (0.0, -0.55, 0.06)  # halfway up
+CAN_GRASP_Z = C.GRASP_HEIGHT_FRACTION * CAN_H   # where the pick aims on the can
+CAN_GRASP = (0.0, -0.55, CAN_GRASP_Z)
 
 
 @pytest.mark.parametrize("mode", ["side", "top"])
@@ -253,7 +254,7 @@ def test_pick_litter_without_tf_reports_error():
 
 def test_align_base_mode_turns_then_picks():
     # Object 0.5 m out on the right, 0.2 m ahead: within reach after one turn, no drive.
-    io = FakeIO(obj_base=(0.2, -0.5, CAN_H / 2))
+    io = FakeIO(obj_base=(0.2, -0.5, CAN_GRASP_Z))
     out = StretchControl(io, grasp_mode="side").pick_object_at(
         (0.2, -0.5, 0.0), CAN_W, CAN_H, align_base=True, retries=0)
     assert out["result"] == StretchControl.SUCCESS, out
@@ -264,7 +265,7 @@ def test_align_base_mode_turns_then_picks():
 @pytest.mark.parametrize("floor_xy", [(0.8, 0.0), (0.3, -1.1), (-0.4, 0.9)])
 def test_align_base_mode_drives_closer_when_out_of_reach(floor_xy):
     # Beyond 0.25 + 0.52 m after a turn alone: faces it, drives closer, turns, picks.
-    io = FakeIO(obj_base=(*floor_xy, CAN_H / 2))
+    io = FakeIO(obj_base=(*floor_xy, CAN_GRASP_Z))
     out = StretchControl(io, grasp_mode="side").pick_object_at(
         (*floor_xy, 0.0), CAN_W, CAN_H, align_base=True, retries=0)
     assert out["result"] == StretchControl.SUCCESS, out
@@ -353,12 +354,12 @@ def test_approach_remeasures_after_wheel_slip():
     # Base moves fall 10% short. Lining up blind misses; re-measuring after each move
     # (what litter/refine does on the robot) gets it, and the grasp needs no base move.
     floor = (0.8, -0.3, 0.0)
-    io = FakeIO(obj_base=(*floor[:2], CAN_H / 2), wheel_slip=0.1)
+    io = FakeIO(obj_base=(*floor[:2], CAN_GRASP_Z), wheel_slip=0.1)
     out = StretchControl(io, grasp_mode="top").pick_object_at(floor, CAN_W, CAN_H,
                                                               align_base=True, retries=0)
     assert out["result"] != StretchControl.SUCCESS
 
-    io = FakeIO(obj_base=(*floor[:2], CAN_H / 2), wheel_slip=0.1)
+    io = FakeIO(obj_base=(*floor[:2], CAN_GRASP_Z), wheel_slip=0.1)
     robot = StretchControl(io, grasp_mode="top")
     point, settled = robot.approach(floor, measure=lambda: (io.obj[0], io.obj[1], 0.0))
     assert settled
@@ -369,7 +370,7 @@ def test_approach_remeasures_after_wheel_slip():
 
 
 def test_approach_without_a_measurement_says_not_settled():
-    io = FakeIO(obj_base=(0.8, 0.0, CAN_H / 2))
+    io = FakeIO(obj_base=(0.8, 0.0, CAN_GRASP_Z))
     _, settled = StretchControl(io).approach((0.8, 0.0, 0.0), measure=lambda: None)
     assert not settled
 
@@ -381,3 +382,11 @@ def test_top_grasp_corrects_for_the_arm_drifting_forward_as_it_extends():
     out = StretchControl(io, grasp_mode="top").pick_object_at(CAN_FLOOR, CAN_W, CAN_H, retries=0)
     assert out["result"] == StretchControl.SUCCESS, out
     assert io.moves("translate_mobile_base")       # nudged along x
+
+
+def test_top_grasp_stops_above_the_object_to_recenter_before_going_down_around_it():
+    io = FakeIO(obj_base=(CAN_GRASP[0] + 0.03, *CAN_GRASP[1:]), wrist_camera=True)
+    out = StretchControl(io, grasp_mode="top").pick_object_at(CAN_FLOOR, CAN_W, CAN_H, retries=0)
+    assert out["result"] == StretchControl.SUCCESS, out
+    lowered = [c[1]["joint_lift"] - GRASP_Z_DROP for c in io.calls if c[0] == "move" and c[2]]
+    assert lowered == pytest.approx([CAN_H + C.PRE_GRASP_CLEARANCE, CAN_GRASP_Z])
